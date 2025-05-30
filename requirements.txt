@@ -1,0 +1,8 @@
+# SMTP MTA server:
+aiosmtpd
+sqlalchemy
+pyOpenSSL
+bcrypt
+dnspython
+dkimpy
+cryptography
