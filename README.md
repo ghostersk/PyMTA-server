@@ -10,6 +10,7 @@ Python Email server for sending emails directly to recipient ( no email Relay)
 
 ## Tests - examples
 [CLI commands and usage example](./tests/general_cli_usage.md)
+
 [Send Test Emails examples](./tests/run_tests_manually.md)
 
 
