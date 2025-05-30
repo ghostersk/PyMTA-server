@@ -1,10 +1,10 @@
 ## setup domain and account for sending email:
 ```bash
-python email-server/cli_tools.py add-domain example.com
-python email-server/cli_tools.py add-user test@example.com testpass123 example.com
-python email-server/cli_tools.py add-ip 127.0.0.1 example.com 
-python email-server/cli_tools.py add-ip 10.100.111.1 example.com 
-python email-server/cli_tools.py generate-dkim example.com
+python email_server/cli_tools.py add-domain example.com
+python email_server/cli_tools.py add-user test@example.com testpass123 example.com
+python email_server/cli_tools.py add-ip 127.0.0.1 example.com 
+python email_server/cli_tools.py add-ip 10.100.111.1 example.com 
+python email_server/cli_tools.py generate-dkim example.com
 ```
 
 ## Check db logs

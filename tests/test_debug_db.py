@@ -34,7 +34,7 @@ except Exception as e:
 
 # Test SQLAlchemy models
 try:
-    from models import Session, Domain, User, WhitelistedIP, create_tables
+    from email_server.models import Session, Domain, User, WhitelistedIP, create_tables
     print("Models imported successfully")
     
     # Create session
