@@ -1,10 +1,10 @@
 ## setup domain and account for sending email:
 ```bash
-python email_server/cli_tools.py add-domain example.com
-python email_server/cli_tools.py add-user test@example.com testpass123 example.com
-python email_server/cli_tools.py add-ip 127.0.0.1 example.com 
-python email_server/cli_tools.py add-ip 10.100.111.1 example.com 
-python email_server/cli_tools.py generate-dkim example.com
+python -m email_server.cli_tools.py add-domain example.com
+python -m email_server.cli_tools.py add-user test@example.com testpass123 example.com
+python -m email_server.cli_tools.py add-ip 127.0.0.1 example.com 
+python -m email_server.cli_tools.py add-ip 10.100.111.1 example.com 
+python -m email_server.cli_tools.py generate-dkim example.com
 ```
 
 ## Check db logs
@@ -15,6 +15,18 @@ python email_server/cli_tools.py generate-dkim example.com
 
 ## Linux send emails using `swaks`
 ```bash
+# multiline test with body from the email_body.txt file:
+swaks --to info@example.com \
+      --from test@example.com \
+      --server localhost \
+      --port 40587 \
+      --auth LOGIN \
+      --auth-user test@example.com \
+      --auth-password testpass123 \
+      --tls \
+      --header "Subject: This is the subject" \
+      --body @tests/email_body.txt
+
 swaks --to info@example.com \
       --from test@example.com \
       --server localhost \

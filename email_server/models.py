@@ -6,7 +6,10 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, B
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import bcrypt
-from .config import DATABASE_URL
+from email_server.config import DATABASE_URL
+from email_server.tool_box import ensure_folder_exists
+
+ensure_folder_exists(DATABASE_URL)
 
 # SQLAlchemy setup
 Base = declarative_base()

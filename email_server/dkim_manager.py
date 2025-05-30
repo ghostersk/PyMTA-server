@@ -7,8 +7,8 @@ import dkim
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from datetime import datetime
-from .models import Session, Domain, DKIMKey
-from .config import DKIM_SELECTOR, DKIM_KEY_SIZE
+from email_server.models import Session, Domain, DKIMKey
+from email_server.config import DKIM_SELECTOR, DKIM_KEY_SIZE
 
 logger = logging.getLogger(__name__)
 

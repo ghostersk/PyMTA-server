@@ -6,6 +6,7 @@ Configuration settings for the SMTP server.
 SMTP_PORT = 4025
 SMTP_TLS_PORT = 40587
 HOSTNAME = 'localhost'
+BIND_IP = '0.0.0.0'
 
 # Database settings
 DATABASE_URL = 'sqlite:///email_server/server_data/smtp_server.db'

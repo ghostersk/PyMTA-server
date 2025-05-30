@@ -5,15 +5,13 @@ Main server file that ties all modules together.
 
 import asyncio
 import logging
-import sys
-import os
 
 # Import our modules
-from .config import SMTP_PORT, SMTP_TLS_PORT, HOSTNAME, LOG_LEVEL
-from .models import create_tables
-from .smtp_handler import CustomSMTPHandler, PlainController
-from .tls_utils import generate_self_signed_cert, create_ssl_context
-from .dkim_manager import DKIMManager
+from email_server.config import SMTP_PORT, SMTP_TLS_PORT, HOSTNAME, LOG_LEVEL, BIND_IP
+from email_server.models import create_tables
+from email_server.smtp_handler import CustomSMTPHandler, PlainController
+from email_server.tls_utils import generate_self_signed_cert, create_ssl_context
+from email_server.dkim_manager import DKIMManager
 from aiosmtpd.controller import Controller
 from aiosmtpd.smtp import SMTP as AIOSMTP
 
@@ -98,7 +96,8 @@ async def start_server():
     handler_plain = CustomSMTPHandler()
     controller_plain = PlainController(
         handler_plain,
-        hostname=HOSTNAME,
+        hostname=BIND_IP,
+        server_hostname="TestEnvironment",
         port=SMTP_PORT
     )
     controller_plain.start()
@@ -122,21 +121,15 @@ async def start_server():
     
     controller_tls = TLSController(
         handler_tls,
-        hostname=HOSTNAME,
+        hostname=BIND_IP,
+        server_hostname="TestEnvironment",
         port=SMTP_TLS_PORT
     )
     controller_tls.start()
-    logger.info(f'Starting STARTTLS SMTP server on {HOSTNAME}:{SMTP_TLS_PORT}...')
-    
-    logger.info('Both SMTP servers are running:')
-    logger.info(f'  - Plain SMTP (IP whitelist): {HOSTNAME}:{SMTP_PORT}')
-    logger.info(f'  - STARTTLS SMTP (auth required): {HOSTNAME}:{SMTP_TLS_PORT}')
-    logger.info('  - DKIM signing enabled for configured domains')
-    logger.info('')
+    logger.info(f'  - Plain SMTP (IP whitelist): {BIND_IP}:{SMTP_PORT}')
+    logger.info(f'  - STARTTLS SMTP (auth required): {BIND_IP}:{SMTP_TLS_PORT}')
     logger.info('Management commands:')
     logger.info('  python cli_tools.py --help')
-    logger.info('')
-    logger.info('Press Ctrl+C to stop the servers...')
     
     try:
         await asyncio.Event().wait()
@@ -145,13 +138,3 @@ async def start_server():
         controller_plain.stop()
         controller_tls.stop()
         logger.info('SMTP servers stopped.')
-
-if __name__ == '__main__':
-    try:
-        asyncio.run(start_server())
-    except KeyboardInterrupt:
-        logger.info('Server interrupted by user')
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f'Server error: {e}')
-        sys.exit(1)

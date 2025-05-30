@@ -5,7 +5,7 @@ Authentication modules for the SMTP server.
 import logging
 from datetime import datetime
 from aiosmtpd.smtp import AuthResult, LoginPassword
-from .models import Session, User, Domain, WhitelistedIP, AuthLog, check_password
+from email_server.models import Session, User, Domain, WhitelistedIP, AuthLog, check_password
 
 logger = logging.getLogger(__name__)
 

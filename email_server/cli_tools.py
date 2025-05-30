@@ -3,9 +3,8 @@ Command-line tools for managing the SMTP server.
 """
 
 import argparse
-import sys
-from .models import Session, Domain, User, WhitelistedIP, hash_password, create_tables
-from .dkim_manager import DKIMManager
+from email_server.models import Session, Domain, User, WhitelistedIP, hash_password, create_tables
+from email_server.dkim_manager import DKIMManager
 import logging
 
 logging.basicConfig(level=logging.INFO)

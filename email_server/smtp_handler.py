@@ -7,9 +7,9 @@ import uuid
 from datetime import datetime
 from aiosmtpd.smtp import SMTP as AIOSMTP, AuthResult
 from aiosmtpd.controller import Controller
-from .auth import Authenticator, IPAuthenticator
-from .email_relay import EmailRelay
-from .dkim_manager import DKIMManager
+from email_server.auth import Authenticator, IPAuthenticator
+from email_server.email_relay import EmailRelay
+from email_server.dkim_manager import DKIMManager
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class TLSController(Controller):
         return AIOSMTP(
             self.handler,
             tls_context=self.ssl_context,
-            require_starttls=False,  # Don't force STARTTLS, but make it available
+            require_starttls=True,  # Don't force STARTTLS, but make it available
             auth_require_tls=True,   # If auth is used, require TLS
             authenticator=self.handler.combined_authenticator,
             decode_data=True,

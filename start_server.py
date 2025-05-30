@@ -1,6 +1,10 @@
-from email_server import start_server, logger
+from email_server.server_runner import start_server
 import asyncio
 import sys
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     try:
