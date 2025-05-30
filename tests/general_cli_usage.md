@@ -49,9 +49,6 @@ python cli_tools.py add-ip 10.0.0.50 mycompany.org        # Internal server
 python cli_tools.py add-ip 203.0.113.10 example.com       # External trusted IP
 ```
 
-# Add entire local network (if your server supports CIDR - may need modification)
-`python cli_tools.py add-ip 192.168.1.0 example.com`        # Network range
-
 # ========================================
 # DKIM KEY MANAGEMENT
 # ========================================

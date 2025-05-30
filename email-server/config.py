@@ -8,7 +8,7 @@ SMTP_TLS_PORT = 40587
 HOSTNAME = 'localhost'
 
 # Database settings
-DATABASE_URL = 'sqlite:///smtp_server.db'
+DATABASE_URL = 'sqlite:///email-server/server_data/smtp_server.db'
 
 # Logging settings
 LOG_LEVEL = 'INFO'
@@ -17,8 +17,8 @@ LOG_LEVEL = 'INFO'
 RELAY_TIMEOUT = 10
 
 # TLS settings
-TLS_CERT_FILE = 'server.crt'
-TLS_KEY_FILE = 'server.key'
+TLS_CERT_FILE = 'email-server/ssl_certs/server.crt'
+TLS_KEY_FILE = 'email-server/ssl_certs/server.key'
 
 # DKIM settings
 DKIM_SELECTOR = 'default'

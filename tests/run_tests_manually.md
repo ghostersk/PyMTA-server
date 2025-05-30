@@ -1,3 +1,11 @@
+## setup domain and account for sending email:
+```bash
+python email-server/cli_tools.py add-domain example.com
+python email-server/cli_tools.py add-user test@example.com testpass123 example.com
+python email-server/cli_tools.py add-ip 127.0.0.1 example.com 
+python email-server/cli_tools.py add-ip 10.100.111.1 example.com 
+python email-server/cli_tools.py generate-dkim example.com
+```
 
 ## Check db logs
 `sqlite3 smtp_server.db "SELECT message_id, rcpt_tos, status FROM email_logs;"`
