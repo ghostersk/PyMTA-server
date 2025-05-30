@@ -6,7 +6,7 @@ import ssl
 import os
 import logging
 from OpenSSL import crypto
-from config import TLS_CERT_FILE, TLS_KEY_FILE
+from .config import TLS_CERT_FILE, TLS_KEY_FILE
 
 logger = logging.getLogger(__name__)
 

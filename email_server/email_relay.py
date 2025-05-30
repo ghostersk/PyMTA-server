@@ -6,7 +6,7 @@ import dns.resolver
 import smtplib
 import logging
 from datetime import datetime
-from models import Session, EmailLog
+from .models import Session, EmailLog
 
 logger = logging.getLogger(__name__)
 

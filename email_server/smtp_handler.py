@@ -7,9 +7,9 @@ import uuid
 from datetime import datetime
 from aiosmtpd.smtp import SMTP as AIOSMTP, AuthResult
 from aiosmtpd.controller import Controller
-from auth import Authenticator, IPAuthenticator
-from email_relay import EmailRelay
-from dkim_manager import DKIMManager
+from .auth import Authenticator, IPAuthenticator
+from .email_relay import EmailRelay
+from .dkim_manager import DKIMManager
 
 logger = logging.getLogger(__name__)
 

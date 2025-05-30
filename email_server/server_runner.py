@@ -9,11 +9,11 @@ import sys
 import os
 
 # Import our modules
-from config import SMTP_PORT, SMTP_TLS_PORT, HOSTNAME, LOG_LEVEL
-from models import create_tables
-from smtp_handler import CustomSMTPHandler, PlainController
-from tls_utils import generate_self_signed_cert, create_ssl_context
-from dkim_manager import DKIMManager
+from .config import SMTP_PORT, SMTP_TLS_PORT, HOSTNAME, LOG_LEVEL
+from .models import create_tables
+from .smtp_handler import CustomSMTPHandler, PlainController
+from .tls_utils import generate_self_signed_cert, create_ssl_context
+from .dkim_manager import DKIMManager
 from aiosmtpd.controller import Controller
 from aiosmtpd.smtp import SMTP as AIOSMTP
 
@@ -32,7 +32,7 @@ except RuntimeError:
     # No running loop, set debug when we create one
     pass
 
-async def main():
+async def start_server():
     """Main server function."""
     logger.info("Starting SMTP Server with DKIM support...")
     
@@ -46,7 +46,7 @@ async def main():
     dkim_manager.initialize_default_keys()
     
     # Add test data if needed
-    from models import Session, Domain, User, WhitelistedIP, hash_password
+    from .models import Session, Domain, User, WhitelistedIP, hash_password
     session = Session()
     try:
         # Add example.com domain if not exists
@@ -148,7 +148,7 @@ async def main():
 
 if __name__ == '__main__':
     try:
-        asyncio.run(main())
+        asyncio.run(start_server())
     except KeyboardInterrupt:
         logger.info('Server interrupted by user')
         sys.exit(0)
