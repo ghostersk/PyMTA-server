@@ -1,0 +1,64 @@
+Return-Path: <Georgio@freebede.com>
+Delivered-To: michal@freebede.com
+Received: from localhost (ip6-localhost [127.0.0.1])
+	by mail.freebede.com (Haraka/3.0.3) with ESMTP id C9334594-05C2-4C2F-9929-8BC2EDE64F7B.1
+	envelope-from <Georgio@freebede.com>;
+	Sat, 31 May 2025 17:16:15 +0100
+X-Sieve: Pigeonhole Sieve 2.4.1-4+debian12 (0a86619f)
+X-Sieve-Redirected-From: info@freebede.com
+Delivered-To: info@freebede.com
+Received-SPF: permerror (mail.freebede.com: permanent error in processing during lookup of Georgio@freebede.com: Unknown mechanism ipv4)
+ client-ip=217.154.124.184;
+X-Haraka-FCrDNS: pymta.freebede.com
+Received: from [217.154.124.184] (pymta.freebede.com [217.154.124.184])
+	by mail.freebede.com (Haraka/3.0.3) with ESMTPS id A7500626-F3FD-4765-AC22-B223F4EBE9AF.1
+	envelope-from <Georgio@freebede.com>
+	tls TLS_AES_256_GCM_SHA384;
+	Sat, 31 May 2025 17:16:14 +0100
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=freebede.com;
+ i=@freebede.com; q=dns/txt; s=default; t=1748708170; h=from : to :
+ subject : date : message-id;
+ bh=d7U3WnzgqTDLdPM2GSrSAqnZP37FNND4SjOTtcrPPa8=;
+ b=k7YkS92hHtDtkiQMwQMVydweX+aeBTkrUXwcZNDkWcId1bItfSvK2sWhRorOOvt08z/+m
+ zButdzQ3Ia/1XPXFf9Ehkb3Jl5IRFnmrI2wgzN5jsJ5SY70zyrd6XVzWr64BbGDDhpnI+D/
+ KXveMWeiJ66Ea++eEM8YG58StFGsMcVEyeiEL5WFaasPCsEPDaVTOWU+ietvpQg777tNDB2
+ hAuJGCnGFngbqeV+6R1jiJM+TZX4KRp8HLPCkX0S52GRTcpNbI8diDY9pDizndasKZNvEEj
+ /YYX+P/vL+4wdUqjx2ALDjG0Z1G/381Rbkn3gWOCRzFpTq/v4ekRwwJAu5fA==
+Date: Sat, 31 May 2025 17:16:09 +0100
+To: info@freebede.com
+From: Georgio@freebede.com
+Subject: TLS - Large body email
+Message-Id: <20250531171609.046279@Supanone-PC>
+X-Mailer: swaks v20240103.0 jetmore.org/john/code/swaks/
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_MIME_BOUNDARY_000_46279"
+X-Haraka-Karma: score: 4, good: 4, bad: 3, connections: 7, history: 1, asn_score: -77, asn_connections: 85, asn_good: 4, asn_bad: 81, awards: 132,281, fail:asn:history, rcpt_to
+X-p0f-Result: os="Linux 2.2.x-3.x" link_type="Ethernet or modem" distance=10 total_conn=8
+X-Rspamd-Bar: ++
+X-Rspamd-Report: DMARC_POLICY_ALLOW(-0.5) HFILTER_HELO_BAREIP(3) MID_RHS_NOT_FQDN(0.5) MIME_GOOD(-0.1) R_DKIM_ALLOW(-0.2) ONCE_RECEIVED(0.2) R_SPF_ALLOW(-0.2)
+X-Rspamd-Score: 2.699999
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=freebede.com;
+ h=Content-Type: MIME-Version: Message-Id: Subject: From: To: Date;
+ q=dns/txt; s=s20240310133; t=1748708175;
+ bh=d7U3WnzgqTDLdPM2GSrSAqnZP37FNND4SjOTtcrPPa8=;
+ b=I3qbjEWaV0amKMevlVUWA3tnoDLaZZCa5HX5YyFOwiFBpjhB2anvXnyE4U8864ER2bqN9VnRw
+ Gu5Ni4YjvNg4HVUABLTHNeTtEe7cik9N26mqjD2Xc6TUluzYtYjEpDGvxI6pfdRTAjFOE1KI0DT
+ OKqNppgzbGyChWFRZdd2PSe2d84OnLj9KXTtmwqNXFGz10EKvXsEQ+v/tX+JOkfE6HW/nAGmHrj
+ ZyZRMhzKPjm4SZHMy/T3MBGNeBwJHx8dg+9hNPKMvNMKFZp+ZzSbEKyD5bBBwWxVjxUlso0ZZZW
+ TzoOAVCqFJxLr4dK6qcpJJ9mjE/0mguJMdZ2J/ia0vBA==
+Original-Authentication-Results: mail.freebede.com;
+	iprev=pass;
+	spf=permerror (mail.freebede.com: permanent error in processing during lookup of Georgio@freebede.com: Unknown mechanism ipv4) smtp.mailfrom=Georgio@freebede.com smtp.helo="[217.154.124.184]";
+	dkim=pass header.i=@freebede.com header.s=default header.a=rsa-sha256 header.b=k7YkS92h;
+	dmarc=pass (p=REJECT arc=none) header.from=freebede.com header.d=freebede.com
+X-Haraka-GeoIP-Received: 217.154.124.184:DE,217.154.124.184:DE
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=freebede.com;
+ h=Content-Type: MIME-Version: Message-Id: Subject: From: To: Date;
+ q=dns/txt; s=s20240310133; t=1748708175;
+ bh=d7U3WnzgqTDLdPM2GSrSAqnZP37FNND4SjOTtcrPPa8=;
+ b=I3qbjEWaV0amKMevlVUWA3tnoDLaZZCa5HX5YyFOwiFBpjhB2anvXnyE4U8864ER2bqN9VnRw
+ Gu5Ni4YjvNg4HVUABLTHNeTtEe7cik9N26mqjD2Xc6TUluzYtYjEpDGvxI6pfdRTAjFOE1KI0DT
+ OKqNppgzbGyChWFRZdd2PSe2d84OnLj9KXTtmwqNXFGz10EKvXsEQ+v/tX+JOkfE6HW/nAGmHrj
+ ZyZRMhzKPjm4SZHMy/T3MBGNeBwJHx8dg+9hNPKMvNMKFZp+ZzSbEKyD5bBBwWxVjxUlso0ZZZW
+ TzoOAVCqFJxLr4dK6qcpJJ9mjE/0mguJMdZ2J/ia0vBA==
+

@@ -61,17 +61,16 @@ class CustomSMTPHandler:
             # Extract domain from sender for DKIM signing
             sender_domain = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else None
             
-            # Sign with DKIM if domain is configured
+            # Relay the email (all modifications done)
             signed_content = content
             dkim_signed = False
             if sender_domain:
+                # DKIM-sign the final version of the message
                 signed_content = self.dkim_manager.sign_email(content, sender_domain)
-                # Check if signing was successful (content changed)
                 dkim_signed = signed_content != content
                 if dkim_signed:
                     logger.debug(f'Email {message_id} signed with DKIM for domain {sender_domain}')
             
-            # Relay the email
             success = self.email_relay.relay_email(
                 envelope.mail_from, 
                 envelope.rcpt_tos, 
