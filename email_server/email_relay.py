@@ -5,11 +5,11 @@ Email relay functionality for the SMTP server.
 import dns.resolver
 import smtplib
 import ssl
-import logging
 from datetime import datetime
 from email_server.models import Session, EmailLog
+from email_server.tool_box import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 class EmailRelay:
     """Handles relaying emails to recipient mail servers."""
@@ -29,7 +29,7 @@ class EmailRelay:
                     # Sort by priority (lower number = higher priority)
                     mx_records = sorted(mx_records, key=lambda x: x.preference)
                     mx_host = mx_records[0].exchange.to_text().rstrip('.')
-                    logger.info(f'Found MX record for {domain}: {mx_host}')
+                    logger.debug(f'Found MX record for {domain}: {mx_host}')
                 except Exception as e:
                     logger.error(f'Failed to resolve MX for {domain}: {e}')
                     return False
@@ -56,14 +56,14 @@ class EmailRelay:
                         # Check if server supports STARTTLS
                         relay_server.ehlo()
                         if relay_server.has_extn('starttls'):
-                            logger.info(f'Starting TLS connection to {mx_host}')
+                            logger.debug(f'Starting TLS connection to {mx_host}')
                             context = ssl.create_default_context()
                             # Allow self-signed certificates for mail servers
                             context.check_hostname = False
                             context.verify_mode = ssl.CERT_NONE
                             relay_server.starttls(context=context)
                             relay_server.ehlo()  # Say hello again after STARTTLS
-                            logger.info(f'TLS connection established to {mx_host}')
+                            logger.debug(f'TLS connection established to {mx_host}')
                         else:
                             logger.warning(f'Server {mx_host} does not support STARTTLS, using plain text')
                     except Exception as tls_e:
@@ -71,7 +71,7 @@ class EmailRelay:
                     
                     # Send the email
                     relay_server.sendmail(mail_from, rcpt, content)
-                    logger.info(f'Successfully relayed email to {rcpt} via {mx_host}')
+                    logger.debug(f'Successfully relayed email to {rcpt} via {mx_host}')
                     return True
                     
             except Exception as e:
@@ -86,7 +86,7 @@ class EmailRelay:
                     # Try other MX records
                     for mx_record in mx_records[1:3]:  # Try up to 2 backup MX records
                         backup_mx = mx_record.exchange.to_text().rstrip('.')
-                        logger.info(f'Trying backup MX record: {backup_mx}')
+                        logger.debug(f'Trying backup MX record: {backup_mx}')
                         
                         try:
                             with smtplib.SMTP(backup_mx, 25, timeout=self.timeout) as backup_server:
@@ -101,12 +101,12 @@ class EmailRelay:
                                         context.verify_mode = ssl.CERT_NONE
                                         backup_server.starttls(context=context)
                                         backup_server.ehlo()
-                                        logger.info(f'TLS connection established to backup {backup_mx}')
+                                        logger.debug(f'TLS connection established to backup {backup_mx}')
                                 except Exception:
                                     logger.warning(f'STARTTLS failed with backup {backup_mx}, using plain text')
                                 
                                 backup_server.sendmail(mail_from, rcpt, content)
-                                logger.info(f'Successfully relayed email to {rcpt} via backup {backup_mx}')
+                                logger.debug(f'Successfully relayed email to {rcpt} via backup {backup_mx}')
                                 return True
                         except Exception as backup_e:
                             logger.warning(f'Backup MX {backup_mx} also failed: {backup_e}')

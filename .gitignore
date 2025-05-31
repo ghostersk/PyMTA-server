@@ -4,10 +4,14 @@ __pycache__/
 *$py.class
 
 # Certs, db, private test files
+settings.ini
 *.crt
 *.key
 *.db
 test.txt
+custom_test.py
+custom_test.sh
+.github/
 
 # C extensions
 *.so

@@ -5,10 +5,9 @@ Command-line tools for managing the SMTP server.
 import argparse
 from email_server.models import Session, Domain, User, WhitelistedIP, hash_password, create_tables
 from email_server.dkim_manager import DKIMManager
-import logging
+from email_server.tool_box import get_logger
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 def add_domain(domain_name, requires_auth=True):
     """Add a new domain to the database."""

@@ -1,13 +1,13 @@
 from email_server.server_runner import start_server
+from email_server.tool_box import get_logger
 import asyncio
 import sys
-import logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 if __name__ == '__main__':
     try:
+        logger.info('Server started')
         asyncio.run(start_server())
     except KeyboardInterrupt:
         logger.info('Server interrupted by user')

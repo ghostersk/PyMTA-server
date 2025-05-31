@@ -2,7 +2,6 @@
 SMTP handler for processing incoming emails.
 """
 
-import logging
 import uuid
 from datetime import datetime
 from aiosmtpd.smtp import SMTP as AIOSMTP, AuthResult
@@ -10,8 +9,9 @@ from aiosmtpd.controller import Controller
 from email_server.auth import Authenticator, IPAuthenticator
 from email_server.email_relay import EmailRelay
 from email_server.dkim_manager import DKIMManager
+from email_server.tool_box import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 class CombinedAuthenticator:
     """Combined authenticator that tries username/password first, then falls back to IP whitelist."""
@@ -50,7 +50,7 @@ class CustomSMTPHandler:
         """Handle incoming email data."""
         try:
             message_id = str(uuid.uuid4())
-            logger.info(f'Received email {message_id} from {envelope.mail_from} to {envelope.rcpt_tos}')
+            logger.debug(f'Received email {message_id} from {envelope.mail_from} to {envelope.rcpt_tos}')
             
             # Convert content to string if it's bytes
             if isinstance(envelope.content, bytes):
@@ -69,7 +69,7 @@ class CustomSMTPHandler:
                 # Check if signing was successful (content changed)
                 dkim_signed = signed_content != content
                 if dkim_signed:
-                    logger.info(f'Email {message_id} signed with DKIM for domain {sender_domain}')
+                    logger.debug(f'Email {message_id} signed with DKIM for domain {sender_domain}')
             
             # Relay the email
             success = self.email_relay.relay_email(
@@ -91,7 +91,7 @@ class CustomSMTPHandler:
             )
             
             if success:
-                logger.info(f'Email {message_id} successfully relayed')
+                logger.debug(f'Email {message_id} successfully relayed')
                 return '250 Message accepted for delivery'
             else:
                 logger.error(f'Email {message_id} failed to relay')

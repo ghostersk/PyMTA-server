@@ -6,8 +6,11 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, B
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import bcrypt
-from email_server.config import DATABASE_URL
-from email_server.tool_box import ensure_folder_exists
+from email_server.settings_loader import load_settings
+from email_server.tool_box import ensure_folder_exists, get_logger
+
+settings = load_settings()
+DATABASE_URL = settings['Database']['DATABASE_URL']
 
 ensure_folder_exists(DATABASE_URL)
 
@@ -15,6 +18,8 @@ ensure_folder_exists(DATABASE_URL)
 Base = declarative_base()
 engine = create_engine(DATABASE_URL, echo=False)
 Session = sessionmaker(bind=engine)
+
+logger = get_logger()
 
 class Domain(Base):
     __tablename__ = 'domains'

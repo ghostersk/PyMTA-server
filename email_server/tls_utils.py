@@ -4,12 +4,15 @@ TLS utilities for the SMTP server.
 
 import ssl
 import os
-import logging
 from OpenSSL import crypto
-from email_server.config import TLS_CERT_FILE, TLS_KEY_FILE
-from email_server.tool_box import ensure_folder_exists
+from email_server.settings_loader import load_settings
+from email_server.tool_box import ensure_folder_exists, get_logger
 
-logger = logging.getLogger(__name__)
+settings = load_settings()
+TLS_CERT_FILE = settings['TLS']['TLS_CERT_FILE']
+TLS_KEY_FILE = settings['TLS']['TLS_KEY_FILE']
+
+logger = get_logger()
 
 ensure_folder_exists(TLS_CERT_FILE)
 ensure_folder_exists(TLS_KEY_FILE)
@@ -17,11 +20,11 @@ ensure_folder_exists(TLS_KEY_FILE)
 def generate_self_signed_cert():
     """Generate self-signed SSL certificate if it doesn't exist."""
     if os.path.exists(TLS_CERT_FILE) and os.path.exists(TLS_KEY_FILE):
-        logger.info("SSL certificate already exists")
+        logger.debug("SSL certificate already exists")
         return True
     
     try:
-        logger.info("Generating self-signed SSL certificate...")
+        logger.debug("Generating self-signed SSL certificate...")
         
         # Generate private key
         k = crypto.PKey()
@@ -47,7 +50,7 @@ def generate_self_signed_cert():
         with open(TLS_KEY_FILE, 'wb') as f:
             f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k))
         
-        logger.info(f"SSL certificate generated: {TLS_CERT_FILE}, {TLS_KEY_FILE}")
+        logger.debug(f"SSL certificate generated: {TLS_CERT_FILE}, {TLS_KEY_FILE}")
         return True
         
     except Exception as e:
@@ -60,7 +63,7 @@ def create_ssl_context():
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ssl_context.load_cert_chain(certfile=TLS_CERT_FILE, keyfile=TLS_KEY_FILE)
         ssl_context.set_ciphers('DEFAULT')  # Relax ciphers for compatibility
-        logger.info('SSL context created successfully')
+        logger.debug('SSL context created successfully')
         return ssl_context
     except Exception as e:
         logger.error(f'Failed to create SSL context: {e}')

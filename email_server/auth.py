@@ -2,12 +2,12 @@
 Authentication modules for the SMTP server.
 """
 
-import logging
 from datetime import datetime
 from aiosmtpd.smtp import AuthResult, LoginPassword
 from email_server.models import Session, User, Domain, WhitelistedIP, AuthLog, check_password
+from email_server.tool_box import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 class Authenticator:
     """Username/password authenticator."""
@@ -47,7 +47,7 @@ class Authenticator:
                 session_db.add(auth_log)
                 session_db.commit()
                 
-                logger.info(f'Authenticated user: {username} from domain {domain.domain_name if domain else "unknown"}')
+                logger.debug(f'Authenticated user: {username} from domain {domain.domain_name if domain else "unknown"}')
                 # Don't include the SMTP response code in the message - let aiosmtpd handle it
                 return AuthResult(success=True, handled=True)
             else:
@@ -94,7 +94,7 @@ class IPAuthenticator:
                     )
                     session_db.add(auth_log)
                     session_db.commit()
-                    logger.info(f'Authenticated via whitelist: IP {peer_ip} for {domain.domain_name}')
+                    logger.debug(f'Authenticated via whitelist: IP {peer_ip} for {domain.domain_name}')
                     return AuthResult(success=True, handled=True, message='Authenticated via whitelist')
             
             return AuthResult(success=False, handled=True, message='IP not whitelisted')

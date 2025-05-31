@@ -4,10 +4,10 @@ Main server file that ties all modules together.
 """
 
 import asyncio
-import logging
+from email_server.settings_loader import load_settings
+from email_server.tool_box import get_logger
 
 # Import our modules
-from email_server.config import SMTP_PORT, SMTP_TLS_PORT, HOSTNAME, LOG_LEVEL, BIND_IP
 from email_server.models import create_tables
 from email_server.smtp_handler import CustomSMTPHandler, PlainController
 from email_server.tls_utils import generate_self_signed_cert, create_ssl_context
@@ -15,12 +15,14 @@ from email_server.dkim_manager import DKIMManager
 from aiosmtpd.controller import Controller
 from aiosmtpd.smtp import SMTP as AIOSMTP
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+settings = load_settings()
+SMTP_PORT = int(settings['Server']['SMTP_PORT'])
+SMTP_TLS_PORT = int(settings['Server']['SMTP_TLS_PORT'])
+HOSTNAME = settings['Server']['HOSTNAME']
+LOG_LEVEL = settings['Logging']['LOG_LEVEL']
+BIND_IP = settings['Server']['BIND_IP']
+
+logger = get_logger()
 
 # Enable asyncio debugging
 try:
@@ -32,14 +34,14 @@ except RuntimeError:
 
 async def start_server():
     """Main server function."""
-    logger.info("Starting SMTP Server with DKIM support...")
+    logger.debug("Starting SMTP Server with DKIM support...")
     
     # Initialize database
-    logger.info("Initializing database...")
+    logger.debug("Initializing database...")
     create_tables()
     
     # Initialize DKIM manager and generate keys for domains without them
-    logger.info("Initializing DKIM manager...")
+    logger.debug("Initializing DKIM manager...")
     dkim_manager = DKIMManager()
     dkim_manager.initialize_default_keys()
     
@@ -53,7 +55,7 @@ async def start_server():
             domain = Domain(domain_name='example.com', requires_auth=True)
             session.add(domain)
             session.commit()
-            logger.info("Added example.com domain")
+            logger.debug("Added example.com domain")
         
         # Add test user if not exists
         user = session.query(User).filter_by(email='test@example.com').first()
@@ -65,7 +67,7 @@ async def start_server():
             )
             session.add(user)
             session.commit()
-            logger.info("Added test user: test@example.com")
+            logger.debug("Added test user: test@example.com")
         
         # Add whitelisted IP if not exists
         whitelist = session.query(WhitelistedIP).filter_by(ip_address='127.0.0.1').first()
@@ -73,7 +75,7 @@ async def start_server():
             whitelist = WhitelistedIP(ip_address='127.0.0.1', domain_id=domain.id)
             session.add(whitelist)
             session.commit()
-            logger.info("Added whitelisted IP: 127.0.0.1")
+            logger.debug("Added whitelisted IP: 127.0.0.1")
     except Exception as e:
         session.rollback()
         logger.error(f"Error adding test data: {e}")
@@ -81,7 +83,7 @@ async def start_server():
         session.close()
     
     # Generate SSL certificate if it doesn't exist
-    logger.info("Checking SSL certificates...")
+    logger.debug("Checking SSL certificates...")
     if not generate_self_signed_cert():
         logger.error("Failed to generate SSL certificate")
         return
@@ -101,7 +103,7 @@ async def start_server():
         port=SMTP_PORT
     )
     controller_plain.start()
-    logger.info(f'Starting plain SMTP server on {HOSTNAME}:{SMTP_PORT}...')
+    logger.debug(f'Starting plain SMTP server on {HOSTNAME}:{SMTP_PORT}...')
     
     # Start TLS SMTP server using closure pattern like the original
     handler_tls = CustomSMTPHandler()
@@ -126,15 +128,15 @@ async def start_server():
         port=SMTP_TLS_PORT
     )
     controller_tls.start()
-    logger.info(f'  - Plain SMTP (IP whitelist): {BIND_IP}:{SMTP_PORT}')
-    logger.info(f'  - STARTTLS SMTP (auth required): {BIND_IP}:{SMTP_TLS_PORT}')
-    logger.info('Management commands:')
-    logger.info('  python cli_tools.py --help')
+    logger.debug(f'  - Plain SMTP (IP whitelist): {BIND_IP}:{SMTP_PORT}')
+    logger.debug(f'  - STARTTLS SMTP (auth required): {BIND_IP}:{SMTP_TLS_PORT}')
+    logger.debug('Management commands:')
+    logger.debug('  python cli_tools.py --help')
     
     try:
         await asyncio.Event().wait()
     except KeyboardInterrupt:
-        logger.info('Shutting down SMTP servers...')
+        logger.debug('Shutting down SMTP servers...')
         controller_plain.stop()
         controller_tls.stop()
-        logger.info('SMTP servers stopped.')
+        logger.debug('SMTP servers stopped.')

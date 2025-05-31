@@ -2,15 +2,19 @@
 DKIM key management and email signing functionality.
 """
 
-import logging
 import dkim
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from datetime import datetime
 from email_server.models import Session, Domain, DKIMKey
-from email_server.config import DKIM_SELECTOR, DKIM_KEY_SIZE
+from email_server.settings_loader import load_settings
+from email_server.tool_box import get_logger
 
-logger = logging.getLogger(__name__)
+settings = load_settings()
+DKIM_SELECTOR = settings['DKIM']['DKIM_SELECTOR']
+DKIM_KEY_SIZE = int(settings['DKIM']['DKIM_KEY_SIZE'])
+
+logger = get_logger()
 
 class DKIMManager:
     """Manages DKIM keys and email signing."""
@@ -31,7 +35,7 @@ class DKIMManager:
             # Check if DKIM key already exists
             existing_key = session.query(DKIMKey).filter_by(domain_id=domain.id, is_active=True).first()
             if existing_key:
-                logger.info(f"DKIM key already exists for domain {domain_name}")
+                logger.debug(f"DKIM key already exists for domain {domain_name}")
                 return True
             
             # Generate RSA key pair
@@ -66,7 +70,7 @@ class DKIMManager:
             session.add(dkim_key)
             session.commit()
             
-            logger.info(f"Generated DKIM key for domain: {domain_name}")
+            logger.debug(f"Generated DKIM key for domain: {domain_name}")
             return True
             
         except Exception as e:
@@ -156,7 +160,7 @@ class DKIMManager:
             # Combine signature with original content
             signed_content = signature + email_bytes
             
-            logger.info(f"Successfully signed email for domain: {domain_name}")
+            logger.debug(f"Successfully signed email for domain: {domain_name}")
             
             # Return as string if input was string
             if isinstance(email_content, str):
@@ -203,7 +207,7 @@ class DKIMManager:
                 ).first()
                 
                 if not existing_key:
-                    logger.info(f"Generating DKIM key for existing domain: {domain.domain_name}")
+                    logger.debug(f"Generating DKIM key for existing domain: {domain.domain_name}")
                     self.generate_dkim_keypair(domain.domain_name)
                     
         except Exception as e:
