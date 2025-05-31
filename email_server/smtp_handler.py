@@ -46,6 +46,87 @@ class CustomSMTPHandler:
         self.auth_require_tls = False
         self.auth_methods = ['LOGIN', 'PLAIN']
 
+    def _ensure_required_headers(self, content: str, envelope, message_id: str) -> str:
+        """Ensure all required email headers are present.
+        
+        Args:
+            content (str): Email content.
+            envelope: SMTP envelope.
+            message_id (str): Generated message ID.
+            
+        Returns:
+            str: Email content with all required headers.
+        """
+        import email.utils
+        from datetime import datetime
+        
+        # Parse existing headers
+        lines = content.split('\n')
+        headers = {}
+        body_start = 0
+        
+        # Find where headers end and body begins
+        for i, line in enumerate(lines):
+            if line.strip() == '':
+                body_start = i + 1
+                break
+            if ':' in line and not line.startswith(' ') and not line.startswith('\t'):
+                header_name, header_value = line.split(':', 1)
+                headers[header_name.strip().lower()] = header_value.strip()
+        
+        # Extract body
+        body = '\n'.join(lines[body_start:]) if body_start < len(lines) else ''
+        
+        # Build required headers
+        required_headers = []
+        
+        # Add Message-ID if missing
+        if 'message-id' not in headers:
+            required_headers.append(f"Message-ID: <{message_id}@{envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else 'localhost'}>")
+        
+        # Add Date if missing
+        if 'date' not in headers:
+            required_headers.append(f"Date: {email.utils.formatdate(localtime=True)}")
+        
+        # Add From if missing
+        if 'from' not in headers:
+            required_headers.append(f"From: {envelope.mail_from}")
+        
+        # Add To if missing
+        if 'to' not in headers:
+            to_list = ', '.join(envelope.rcpt_tos)
+            required_headers.append(f"To: {to_list}")
+        
+        # Add MIME-Version if missing
+        if 'mime-version' not in headers:
+            required_headers.append("MIME-Version: 1.0")
+        
+        # Add Content-Type if missing
+        if 'content-type' not in headers:
+            required_headers.append("Content-Type: text/plain; charset=utf-8")
+        
+        # Rebuild the email with required headers first, then existing headers, then body
+        new_content_lines = required_headers
+        
+        # Add existing headers (excluding the ones we just added)
+        for i in range(body_start):
+            line = lines[i]
+            if ':' in line and not line.startswith(' ') and not line.startswith('\t'):
+                header_name = line.split(':', 1)[0].strip().lower()
+                if header_name not in ['message-id', 'date', 'from', 'to', 'mime-version', 'content-type']:
+                    new_content_lines.append(line)
+            elif line.startswith(' ') or line.startswith('\t'):
+                # Continuation of previous header
+                new_content_lines.append(line)
+        
+        # Add empty line between headers and body
+        new_content_lines.append('')
+        
+        # Add body
+        new_content_lines.append(body)
+        
+        return '\r\n'.join(new_content_lines)
+
     async def handle_DATA(self, server, session, envelope):
         """Handle incoming email data."""
         try:
@@ -60,6 +141,9 @@ class CustomSMTPHandler:
             
             # Extract domain from sender for DKIM signing
             sender_domain = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else None
+            
+            # Ensure required headers are present
+            content = self._ensure_required_headers(content, envelope, message_id)
             
             # Add custom headers before DKIM signing
             if sender_domain:
