@@ -6,7 +6,7 @@ import dkim
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from datetime import datetime
-from email_server.models import Session, Domain, DKIMKey
+from email_server.models import Session, Domain, DKIMKey, CustomHeader
 from email_server.settings_loader import load_settings
 from email_server.tool_box import get_logger
 import random
@@ -209,5 +209,27 @@ class DKIMManager:
                     
         except Exception as e:
             logger.error(f"Error initializing default DKIM keys: {e}")
+        finally:
+            session.close()
+
+    def get_active_custom_headers(self, domain_name: str) -> list:
+        """Get all active custom headers for a domain.
+
+        Args:
+            domain_name (str): The domain name.
+
+        Returns:
+            list: List of (header_name, header_value) tuples for active headers.
+        """
+        session = Session()
+        try:
+            domain = session.query(Domain).filter_by(domain_name=domain_name).first()
+            if not domain:
+                return []
+            headers = session.query(CustomHeader).filter_by(domain_id=domain.id, is_active=True).all()
+            return [(h.header_name, h.header_value) for h in headers]
+        except Exception as e:
+            logger.error(f"Error getting custom headers for {domain_name}: {e}")
+            return []
         finally:
             session.close()

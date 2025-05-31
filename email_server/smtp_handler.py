@@ -61,6 +61,13 @@ class CustomSMTPHandler:
             # Extract domain from sender for DKIM signing
             sender_domain = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else None
             
+            # Add custom headers before DKIM signing
+            if sender_domain:
+                custom_headers = self.dkim_manager.get_active_custom_headers(sender_domain)
+                for header_name, header_value in custom_headers:
+                    # Insert header at the top of the message
+                    content = f"{header_name}: {header_value}\r\n" + content
+            
             # Relay the email (all modifications done)
             signed_content = content
             dkim_signed = False

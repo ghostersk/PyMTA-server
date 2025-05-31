@@ -71,6 +71,15 @@ class DKIMKey(Base):
     created_at = Column(DateTime, default=datetime.now)
     is_active = Column(Boolean, default=True)
 
+class CustomHeader(Base):
+    """Model for storing custom headers per domain."""
+    __tablename__ = 'custom_headers'
+    id = Column(Integer, primary_key=True)
+    domain_id = Column(Integer, nullable=False)
+    header_name = Column(String, nullable=False)
+    header_value = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+
 def create_tables():
     """Create all database tables."""
     Base.metadata.create_all(engine)

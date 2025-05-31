@@ -3,7 +3,7 @@ Command-line tools for managing the SMTP server.
 """
 
 import argparse
-from email_server.models import Session, Domain, User, WhitelistedIP, hash_password, create_tables
+from email_server.models import Session, Domain, User, WhitelistedIP, hash_password, create_tables, CustomHeader
 from email_server.dkim_manager import DKIMManager
 from email_server.tool_box import get_logger
 
@@ -92,7 +92,7 @@ def add_whitelisted_ip(ip_address, domain_name):
 def generate_dkim_key(domain_name):
     """Generate DKIM key for a domain."""
     dkim_manager = DKIMManager()
-    if dkim_manager.generate_dkim_keypair(domain_name):
+    if (dkim_manager.generate_dkim_keypair(domain_name)):
         print(f"Generated DKIM key for domain: {domain_name}")
         
         # Show DNS record
@@ -149,6 +149,41 @@ def show_dns_records():
     finally:
         session.close()
 
+def add_custom_header(domain_name: str, header_name: str, header_value: str, is_active: bool = True) -> bool:
+    """Add a custom header for a domain.
+
+    Args:
+        domain_name (str): The domain name.
+        header_name (str): The header name.
+        header_value (str): The header value.
+        is_active (bool): Whether the header is active.
+
+    Returns:
+        bool: True if added, False otherwise.
+    """
+    session = Session()
+    try:
+        domain = session.query(Domain).filter_by(domain_name=domain_name).first()
+        if not domain:
+            print(f"Domain {domain_name} not found")
+            return False
+        custom_header = CustomHeader(
+            domain_id=domain.id,
+            header_name=header_name,
+            header_value=header_value,
+            is_active=is_active
+        )
+        session.add(custom_header)
+        session.commit()
+        print(f"Added custom header '{header_name}: {header_value}' for domain {domain_name}")
+        return True
+    except Exception as e:
+        session.rollback()
+        print(f"Error adding custom header: {e}")
+        return False
+    finally:
+        session.close()
+
 def main():
     """Main CLI function."""
     parser = argparse.ArgumentParser(description="SMTP Server Management Tool")
@@ -181,6 +216,12 @@ def main():
     
     dns_parser = subparsers.add_parser('show-dns', help='Show DNS records for DKIM')
     
+    custom_header_parser = subparsers.add_parser('add-custom-header', help='Add a custom header for a domain')
+    custom_header_parser.add_argument('domain', help='Domain name')
+    custom_header_parser.add_argument('header_name', help='Header name')
+    custom_header_parser.add_argument('header_value', help='Header value')
+    custom_header_parser.add_argument('--inactive', action='store_true', help='Add as inactive (disabled)')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -208,6 +249,9 @@ def main():
     
     elif args.command == 'show-dns':
         show_dns_records()
+    
+    elif args.command == 'add-custom-header':
+        add_custom_header(args.domain, args.header_name, args.header_value, not args.inactive)
 
 if __name__ == '__main__':
     main()
