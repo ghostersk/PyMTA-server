@@ -12,6 +12,8 @@ test.txt
 custom_test.py
 custom_test.sh
 .github/
+*.backup
+mytest_*
 
 # C extensions
 *.so
