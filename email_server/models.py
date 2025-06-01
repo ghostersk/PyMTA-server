@@ -129,15 +129,26 @@ class EmailLog(Base):
     __tablename__ = 'esrv_email_logs'
     
     id = Column(Integer, primary_key=True)
-    from_address = Column(String, nullable=False)
-    to_address = Column(String, nullable=False)
-    subject = Column(Text)
+    
+    # Legacy columns (from original schema)
+    message_id = Column(String, unique=True, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
+    peer = Column(String, nullable=False)
+    mail_from = Column(String, nullable=False)
+    rcpt_tos = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
     status = Column(String, nullable=False)
-    message = Column(Text)
+    dkim_signed = Column(Boolean, default=False)
+    
+    # New columns (added later)
+    from_address = Column(String, nullable=False, server_default='unknown')
+    to_address = Column(String, nullable=False, server_default='unknown')
+    subject = Column(Text, nullable=True)
+    message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now())
     
     def __repr__(self):
-        return f"<EmailLog(id={self.id}, from='{self.from_address}', to='{self.to_address}', status='{self.status}')>"
+        return f"<EmailLog(id={self.id}, message_id='{self.message_id}', from='{self.mail_from}', to='{self.rcpt_tos}', status='{self.status}')>"
 
 class AuthLog(Base):
     """Authentication log model for security auditing."""
