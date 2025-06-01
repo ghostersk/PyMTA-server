@@ -9,7 +9,7 @@ from email_server.tool_box import get_logger
 
 logger = get_logger()
 
-def add_domain(domain_name, requires_auth=True):
+def add_domain(domain_name):
     """Add a new domain to the database."""
     session = Session()
     try:
@@ -18,7 +18,7 @@ def add_domain(domain_name, requires_auth=True):
             print(f"Domain {domain_name} already exists")
             return False
         
-        domain = Domain(domain_name=domain_name, requires_auth=requires_auth)
+        domain = Domain(domain_name=domain_name)
         session.add(domain)
         session.commit()
         print(f"Added domain: {domain_name}")

@@ -13,7 +13,6 @@ import random
 import string
 
 settings = load_settings()
-DKIM_SELECTOR = settings['DKIM']['DKIM_SELECTOR']
 DKIM_KEY_SIZE = int(settings['DKIM']['DKIM_KEY_SIZE'])
 
 logger = get_logger()

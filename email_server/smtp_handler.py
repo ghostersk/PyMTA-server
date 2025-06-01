@@ -1,24 +1,38 @@
 """
-SMTP handler for processing incoming emails.
+Enhanced SMTP handler for processing incoming emails with security controls.
+
+Security Features:
+- Users can only send as their own email or domain emails (if permitted)
+- IP authentication is domain-specific
+- Sender authorization validation
+- Enhanced header management
 """
 
 import uuid
+import email.utils
 from datetime import datetime
 from aiosmtpd.smtp import SMTP as AIOSMTP, AuthResult
 from aiosmtpd.controller import Controller
-from email_server.auth import Authenticator, IPAuthenticator
+from email_server.auth import EnhancedAuthenticator, EnhancedIPAuthenticator, validate_sender_authorization, get_authenticated_domain_id
 from email_server.email_relay import EmailRelay
 from email_server.dkim_manager import DKIMManager
 from email_server.tool_box import get_logger
 
 logger = get_logger()
 
-class CombinedAuthenticator:
-    """Combined authenticator that tries username/password first, then falls back to IP whitelist."""
+class EnhancedCombinedAuthenticator:
+    """
+    Enhanced combined authenticator with sender validation support.
+    
+    Features:
+    - User authentication with session storage
+    - IP-based authentication with domain validation  
+    - Fallback authentication logic
+    """
     
     def __init__(self):
-        self.user_auth = Authenticator()
-        self.ip_auth = IPAuthenticator()
+        self.user_auth = EnhancedAuthenticator()
+        self.ip_auth = EnhancedIPAuthenticator()
     
     def __call__(self, server, session, envelope, mechanism, auth_data):
         from aiosmtpd.smtp import LoginPassword
@@ -31,20 +45,64 @@ class CombinedAuthenticator:
             # If user auth fails, don't try IP auth - return the failure
             return result
         
-        # If no auth_data provided, try IP-based authentication
-        return self.ip_auth(server, session, envelope, mechanism, auth_data)
+        # If no auth_data provided, IP auth will be validated during MAIL FROM
+        # For now, allow the connection to proceed
+        return AuthResult(success=True, handled=True)
 
-class CustomSMTPHandler:
-    """Custom SMTP handler for processing emails."""
+class EnhancedCustomSMTPHandler:
+    """Enhanced custom SMTP handler with security controls."""
     
     def __init__(self):
-        self.authenticator = Authenticator()
-        self.ip_authenticator = IPAuthenticator()
-        self.combined_authenticator = CombinedAuthenticator()
+        self.authenticator = EnhancedAuthenticator()
+        self.ip_authenticator = EnhancedIPAuthenticator()
+        self.combined_authenticator = EnhancedCombinedAuthenticator()
         self.email_relay = EmailRelay()
         self.dkim_manager = DKIMManager()
         self.auth_require_tls = False
         self.auth_methods = ['LOGIN', 'PLAIN']
+
+    def _ensure_required_headers(self, content: str, envelope, message_id: str) -> str:
+        """Ensure all required email headers are present and properly formatted.
+
+        Args:
+            content (str): Email content.
+            envelope: SMTP envelope.
+            message_id (str): Generated message ID.
+
+        Returns:
+            str: Email content with all required headers.
+        """
+        import email
+        from email.parser import Parser
+        from email.policy import default
+
+        # Parse the message using the email library
+        msg = Parser(policy=default).parsestr(content)
+
+        # Set or add required headers if missing
+        if not msg.get('Message-ID'):
+            msg['Message-ID'] = f"<{message_id}@{envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else 'localhost'}>"
+        if not msg.get('Date'):
+            msg['Date'] = email.utils.formatdate(localtime=True)
+        if not msg.get('From'):
+            msg['From'] = envelope.mail_from
+        if not msg.get('To'):
+            msg['To'] = ', '.join(envelope.rcpt_tos)
+        if not msg.get('MIME-Version'):
+            msg['MIME-Version'] = '1.0'
+        if not msg.get('Content-Type'):
+            msg['Content-Type'] = 'text/plain; charset=utf-8'
+        if not msg.get('Subject'):
+            msg['Subject'] = '(No Subject)'
+        if not msg.get('Content-Transfer-Encoding'):
+            msg['Content-Transfer-Encoding'] = '7bit'
+
+        # Ensure exactly one blank line between headers and body
+        # The email library will handle this when flattening
+        from io import StringIO
+        out = StringIO()
+        out.write(msg.as_string())
+        return out.getvalue()
 
     async def handle_DATA(self, server, session, envelope):
         """Handle incoming email data."""
@@ -60,6 +118,9 @@ class CustomSMTPHandler:
             
             # Extract domain from sender for DKIM signing
             sender_domain = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else None
+            
+            # Ensure required headers are present
+            content = self._ensure_required_headers(content, envelope, message_id)
             
             # Add custom headers before DKIM signing
             if sender_domain:
@@ -114,9 +175,25 @@ class CustomSMTPHandler:
         return '250 OK'
 
     async def handle_MAIL(self, server, session, envelope, address, mail_options):
-        """Handle MAIL FROM command - validate sender."""
+        """
+        Handle MAIL FROM command with enhanced sender validation.
+        
+        Security Features:
+        - Validates user can send as the specified address
+        - Validates IP authorization for domain
+        - Comprehensive audit logging
+        """
         logger.debug(f'MAIL FROM: {address}')
+        
+        # Validate sender authorization
+        authorized, message = validate_sender_authorization(session, address)
+        
+        if not authorized:
+            logger.warning(f'MAIL FROM rejected: {address} - {message}')
+            return f'550 {message}'
+        
         envelope.mail_from = address
+        logger.info(f'MAIL FROM accepted: {address} - {message}')
         return '250 OK'
 
 class TLSController(Controller):

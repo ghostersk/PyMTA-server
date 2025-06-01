@@ -9,7 +9,7 @@ from email_server.tool_box import get_logger
 
 # Import our modules
 from email_server.models import create_tables
-from email_server.smtp_handler import CustomSMTPHandler, PlainController
+from email_server.smtp_handler import EnhancedCustomSMTPHandler, PlainController
 from email_server.tls_utils import generate_self_signed_cert, create_ssl_context
 from email_server.dkim_manager import DKIMManager
 from aiosmtpd.controller import Controller
@@ -52,7 +52,7 @@ async def start_server():
         # Add example.com domain if not exists
         domain = session.query(Domain).filter_by(domain_name='example.com').first()
         if not domain:
-            domain = Domain(domain_name='example.com', requires_auth=True)
+            domain = Domain(domain_name='example.com')
             session.add(domain)
             session.commit()
             logger.debug("Added example.com domain")
@@ -95,7 +95,7 @@ async def start_server():
         return
     
     # Start plain SMTP server (with IP whitelist fallback)
-    handler_plain = CustomSMTPHandler()
+    handler_plain = EnhancedCustomSMTPHandler()
     controller_plain = PlainController(
         handler_plain,
         hostname=BIND_IP,
@@ -106,7 +106,7 @@ async def start_server():
     logger.debug(f'Starting plain SMTP server on {HOSTNAME}:{SMTP_PORT}...')
     
     # Start TLS SMTP server using closure pattern like the original
-    handler_tls = CustomSMTPHandler()
+    handler_tls = EnhancedCustomSMTPHandler()
     
     # Define TLS controller class with ssl_context in closure (like original)
     class TLSController(Controller):

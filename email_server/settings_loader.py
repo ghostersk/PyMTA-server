@@ -31,7 +31,6 @@ DEFAULTS = {
         'TLS_KEY_FILE': 'email_server/ssl_certs/server.key',
     },
     'DKIM': {
-        'DKIM_SELECTOR': 'default',
         'DKIM_KEY_SIZE': '2048',
     },
 }
