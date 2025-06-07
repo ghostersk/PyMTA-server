@@ -34,6 +34,10 @@
             DKIM Key Management
         </h2>
         <div class="btn-group">
+            <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#createDKIMModal">
+                <i class="bi bi-plus-circle me-2"></i>
+                Create DKIM
+            </button>
             <button class="btn btn-outline-info" onclick="checkAllDNS()">
                 <i class="bi bi-arrow-clockwise me-2"></i>
                 Check All DNS
@@ -41,62 +45,97 @@
         </div>
     </div>
 
+    <!-- Create DKIM Modal -->
+    <div class="modal fade" id="createDKIMModal" tabindex="-1" aria-labelledby="createDKIMModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="createDKIMForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="createDKIMModalLabel">Create New DKIM Key</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="dkimDomain" class="form-label">Domain</label>
+                <select class="form-select" id="dkimDomain" name="domain" required>
+                  <option value="" disabled selected>Select domain</option>
+                  {% for item in dkim_data %}
+                  <option value="{{ item.domain.domain_name }}">{{ item.domain.domain_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="dkimSelector" class="form-label">Selector (optional)</label>
+                <input type="text" class="form-control" id="dkimSelector" name="selector" maxlength="32" placeholder="Leave blank for random selector">
+              </div>
+              <div id="createDKIMError" class="alert alert-danger d-none"></div>
+              <div id="createDKIMSuccess" class="alert alert-success d-none"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     {% for item in dkim_data %}
     <div class="card mb-4" id="domain-{{ item.domain.id }}">
-        <div class="card-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-{{ item.domain.id }}" aria-expanded="false" aria-controls="collapse-{{ item.domain.id }}">
+        <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-server me-2"></i>
-                    {{ item.domain.domain_name }}
-                    {% if item.dkim_key.is_active %}
-                        <span class="badge bg-success ms-2">Active</span>
-                    {% else %}
-                        <span class="badge bg-secondary ms-2">Inactive</span>
-                    {% endif %}
-                </h5>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary" onclick="checkDomainDNS('{{ item.domain.domain_name }}', '{{ item.dkim_key.selector }}')">
+                <div class="flex-grow-1 card-header-clickable" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-{{ item.domain.id }}" aria-expanded="false" aria-controls="collapse-{{ item.domain.id }}">
+                    <h5 class="mb-0">
+                        <i class="bi bi-server me-2"></i>
+                        {{ item.domain.domain_name }}
+                        {% if item.dkim_key.is_active %}
+                            <span class="badge bg-success ms-2">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary ms-2">Inactive</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="btn-group btn-group-sm me-2">
+                    <button class="btn btn-outline-primary" onclick="event.stopPropagation(); checkDomainDNS('{{ item.domain.domain_name }}', '{{ item.dkim_key.selector }}')">
                         <i class="bi bi-search me-1"></i>
                         Check DNS
                     </button>
                     <div class="btn-group btn-group-sm" role="group">
                         <a href="{{ url_for('email.edit_dkim', dkim_id=item.dkim_key.id) }}" 
-                           class="btn btn-outline-info">
+                           class="btn btn-outline-info"
+                           onclick="event.stopPropagation();">
                             <i class="bi bi-pencil me-1"></i>
                             Edit
                         </a>
                         <form method="post" action="{{ url_for('email.toggle_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline">
                             {% if item.dkim_key.is_active %}
-                                <button type="submit" class="btn btn-outline-warning">
+                                <button type="submit" class="btn btn-outline-warning" onclick="event.stopPropagation();">
                                     <i class="bi bi-pause-circle me-1"></i>
                                     Disable
                                 </button>
                             {% else %}
-                                <button type="submit" class="btn btn-outline-success">
+                                <button type="submit" class="btn btn-outline-success" onclick="event.stopPropagation();">
                                     <i class="bi bi-play-circle me-1"></i>
                                     Enable
                                 </button>
                             {% endif %}
                         </form>
-                        <form method="post" action="{{ url_for('email.remove_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline">
+                        <form method="post" action="{{ url_for('email.remove_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline" onsubmit="return handleFormSubmit(event, 'Are you sure you want to permanently remove the DKIM key for {{ item.domain.domain_name }}? This action cannot be undone and you will lose the ability to sign emails until you regenerate a new key.')">
                             <button type="submit" 
                                     class="btn btn-outline-danger"
-                                    onclick="return confirm('Are you sure you want to permanently remove the DKIM key for {{ item.domain.domain_name }}? This action cannot be undone and you will lose the ability to sign emails until you regenerate a new key.')">
+                                    onclick="event.stopPropagation();">
                                 <i class="bi bi-trash me-1"></i>
                                 Remove
                             </button>
                         </form>
                     </div>
-                    <form method="post" action="{{ url_for('email.regenerate_dkim', domain_id=item.domain.id) }}" class="d-inline">
-                        <button type="submit" 
-                                class="btn btn-outline-warning"
-                                onclick="return confirm('Regenerate DKIM key for {{ item.domain.domain_name }}? This will require updating DNS records.')">
-                            <i class="bi bi-arrow-clockwise me-1"></i>
-                            Regenerate
-                        </button>
-                    </form>
+                    <button class="btn btn-outline-warning" 
+                            onclick="event.stopPropagation(); regenerateDKIM({{ item.domain.id }}, '{{ item.domain.domain_name }}')">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Regenerate
+                    </button>
                 </div>
-                <div class="ms-auto">
+                <div class="card-header-clickable" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-{{ item.domain.id }}" aria-expanded="false" aria-controls="collapse-{{ item.domain.id }}">
                     <i class="bi bi-chevron-down" id="chevron-{{ item.domain.id }}"></i>
                 </div>
             </div>
@@ -109,7 +148,7 @@
                     <h6>
                         <i class="bi bi-key me-2"></i>
                         DKIM DNS Record
-                        <span class="dns-status" id="dkim-status-{{ item.domain.id }}">
+                        <span class="dns-status" id="dkim-status-{{ item.domain.domain_name.replace('.', '-') }}">
                             <span class="status-indicator status-warning"></span>
                             <small class="text-muted">Not checked</small>
                         </span>
@@ -136,7 +175,7 @@
                     <h6>
                         <i class="bi bi-shield-lock me-2"></i>
                         SPF DNS Record
-                        <span class="dns-status" id="spf-status-{{ item.domain.id }}">
+                        <span class="dns-status" id="spf-status-{{ item.domain.domain_name.replace('.', '-') }}">
                             <span class="status-indicator status-warning"></span>
                             <small class="text-muted">Not checked</small>
                         </span>
@@ -197,6 +236,60 @@
         </div>
     </div>
     {% endfor %}
+
+    <!-- Old DKIM Keys Section -->
+    {% if old_dkim_data %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">
+                <i class="bi bi-archive me-2"></i>
+                Old DKIM Keys
+                <span class="badge bg-secondary ms-2">{{ old_dkim_data|length }}</span>
+            </h4>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">These keys have been replaced or disabled. They are kept for reference and can be permanently removed.</p>
+            
+            {% for item in old_dkim_data %}
+            <div class="card mb-3 border-secondary">
+                <div class="card-header bg-dark">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">
+                                <i class="bi bi-server me-2"></i>
+                                {{ item.domain.domain_name }}
+                                <span class="badge bg-secondary ms-2">{{ item.status_text }}</span>
+                            </h6>
+                            <small class="text-muted">
+                                Selector: <code>{{ item.dkim_key.selector }}</code> | 
+                                Created: {{ item.dkim_key.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% if item.dkim_key.replaced_at %}
+                                | Replaced: {{ item.dkim_key.replaced_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <form method="post" action="{{ url_for('email.toggle_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-play-circle me-1"></i>
+                                    Reactivate
+                                </button>
+                            </form>
+                            <form method="post" action="{{ url_for('email.remove_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline" onsubmit="return handleFormSubmit(event, 'Are you sure you want to permanently remove this old DKIM key? This action cannot be undone.')">
+                                <button type="submit" 
+                                        class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-trash me-1"></i>
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     {% if not dkim_data %}
     <div class="card">
@@ -314,20 +407,194 @@
         new bootstrap.Modal(document.getElementById('dnsResultModal')).show();
     }
     
+    function showAllDNSResults(results) {
+        let tableRows = '';
+        
+        results.forEach(result => {
+            const dkimIcon = result.dkim.success ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-x-circle-fill text-danger"></i>';
+            const spfIcon = result.spf.success ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-x-circle-fill text-danger"></i>';
+            
+            tableRows += `
+                <tr>
+                    <td><strong>${result.domain}</strong></td>
+                    <td class="text-center">
+                        ${dkimIcon}
+                        <small class="d-block">${result.dkim.success ? 'Configured' : 'Not Found'}</small>
+                    </td>
+                    <td class="text-center">
+                        ${spfIcon}
+                        <small class="d-block">${result.spf.success ? 'Found' : 'Not Found'}</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">
+                            DKIM: ${result.dkim.message}<br>
+                            SPF: ${result.spf.message}
+                        </small>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        const resultsHtml = `
+            <h6>DNS Check Results for All Domains</h6>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Domain</th>
+                            <th class="text-center">DKIM Status</th>
+                            <th class="text-center">SPF Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">
+                <div class="alert alert-info">
+                    <small>
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>DKIM:</strong> Verifies email signatures for authenticity<br>
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>SPF:</strong> Authorizes servers that can send email for your domain
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('dnsResults').innerHTML = resultsHtml;
+        new bootstrap.Modal(document.getElementById('dnsResultModal')).show();
+    }
+    
     async function checkAllDNS() {
         const domains = document.querySelectorAll('[id^="domain-"]');
+        const results = [];
+        
+        // Show a progress indicator
+        showToast('Checking DNS records for all domains...', 'info');
+        
         for (const domainCard of domains) {
-            const domainId = domainCard.id.split('-')[1];
-            // Extract domain name from the card header
-            const domainHeaderText = domainCard.querySelector('h5').textContent.trim();
-            const domainName = domainHeaderText.split('\n')[0].trim().replace(/^\s*\S+\s+/, ''); // Remove icon
-            const selectorElement = domainCard.querySelector('code');
-            if (selectorElement) {
-                const selector = selectorElement.textContent;
-                await checkDomainDNS(domainName, selector);
-                // Small delay between checks to avoid overwhelming the DNS server
-                await new Promise(resolve => setTimeout(resolve, 500));
+            try {
+                const domainId = domainCard.id.split('-')[1];
+                // Extract domain name from the card header
+                const domainHeaderText = domainCard.querySelector('h5').textContent.trim();
+                const domainName = domainHeaderText.split('\n')[0].trim().replace(/^\s*\S+\s+/, ''); // Remove icon
+                const selectorElement = domainCard.querySelector('code');
+                
+                if (selectorElement) {
+                    const selector = selectorElement.textContent;
+                    
+                    // Check DKIM DNS
+                    const dkimResponse = await fetch('{{ url_for("email.check_dkim_dns") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `domain=${encodeURIComponent(domainName)}&selector=${encodeURIComponent(selector)}`
+                    });
+                    const dkimResult = await dkimResponse.json();
+                    
+                    // Check SPF DNS
+                    const spfResponse = await fetch('{{ url_for("email.check_spf_dns") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `domain=${encodeURIComponent(domainName)}`
+                    });
+                    const spfResult = await spfResponse.json();
+                    
+                    results.push({
+                        domain: domainName,
+                        dkim: dkimResult,
+                        spf: spfResult
+                    });
+                    
+                    // Update individual status indicators
+                    const dkimStatus = document.getElementById(`dkim-status-${domainName.replace('.', '-')}`);
+                    const spfStatus = document.getElementById(`spf-status-${domainName.replace('.', '-')}`);
+                    
+                    if (dkimStatus) {
+                        if (dkimResult.success) {
+                            dkimStatus.innerHTML = '<span class="status-indicator status-success"></span><small class="text-success">✓ Configured</small>';
+                        } else {
+                            dkimStatus.innerHTML = '<span class="status-indicator status-danger"></span><small class="text-danger">✗ Not found</small>';
+                        }
+                    }
+                    
+                    if (spfStatus) {
+                        if (spfResult.success) {
+                            spfStatus.innerHTML = '<span class="status-indicator status-success"></span><small class="text-success">✓ Found</small>';
+                        } else {
+                            spfStatus.innerHTML = '<span class="status-indicator status-danger"></span><small class="text-danger">✗ Not found</small>';
+                        }
+                    }
+                    
+                    // Small delay between checks to avoid overwhelming the DNS server
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+            } catch (error) {
+                console.error('Error checking DNS for domain:', error);
             }
+        }
+        
+        // Show combined results in modal
+        showAllDNSResults(results);
+    }
+    
+    // AJAX DKIM regeneration function
+    // Simple DKIM regeneration function with page reload
+    async function regenerateDKIM(domainId, domainName) {
+        const confirmed = await showConfirmation(
+            `Regenerate DKIM key for ${domainName}? This will require updating DNS records.`,
+            'Regenerate DKIM Key',
+            'Regenerate',
+            'btn-warning'
+        );
+        
+        if (!confirmed) {
+            return;
+        }
+        
+        const button = event.target.closest('button');
+        const originalContent = button.innerHTML;
+        
+        // Show loading state
+        button.innerHTML = '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm me-1"></i>Regenerating...';
+        button.disabled = true;
+        
+        try {
+            const response = await fetch(`{{ url_for('email.regenerate_dkim', domain_id=0) }}`.replace('0', domainId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('DKIM key regenerated successfully! Reloading page...', 'success');
+                
+                // Reload the page after a short delay to show the success message
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast(result.message || 'Error regenerating DKIM key', 'danger');
+                // Restore button on error
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }
+        } catch (error) {
+            console.error('DKIM regeneration error:', error);
+            showToast('Error regenerating DKIM key', 'danger');
+            // Restore button on error
+            button.innerHTML = originalContent;
+            button.disabled = false;
         }
     }
     
@@ -350,10 +617,29 @@
         });
     }
     
+    // Handle form submissions with custom confirmation dialogs
+    async function handleFormSubmit(event, message) {
+        event.preventDefault(); // Prevent default form submission
+        
+        const confirmed = await showConfirmation(
+            message,
+            'Confirm Action',
+            'Confirm',
+            'btn-danger'
+        );
+        
+        if (confirmed) {
+            // Submit the form if confirmed
+            event.target.submit();
+        }
+        
+        return false; // Always return false to prevent default submission
+    }
+    
     // Handle collapsible cards
     document.addEventListener('DOMContentLoaded', function() {
-        // Add click handlers for card headers
-        document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(element) {
+        // Add click handlers for card headers - only for clickable areas
+        document.querySelectorAll('.card-header-clickable[data-bs-toggle="collapse"]').forEach(function(element) {
             element.addEventListener('click', function() {
                 const targetId = this.getAttribute('data-bs-target');
                 const chevronId = targetId.replace('#collapse-', '#chevron-');
@@ -372,6 +658,43 @@
                 }
             });
         });
+    });
+
+    document.getElementById('createDKIMForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const domain = document.getElementById('dkimDomain').value;
+        const selector = document.getElementById('dkimSelector').value.trim();
+        const errorDiv = document.getElementById('createDKIMError');
+        const successDiv = document.getElementById('createDKIMSuccess');
+        errorDiv.classList.add('d-none');
+        successDiv.classList.add('d-none');
+        if (!domain) {
+            errorDiv.textContent = 'Please select a domain.';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        try {
+            const response = await fetch("{{ url_for('email.create_dkim') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ domain, selector })
+            });
+            const result = await response.json();
+            if (result.success) {
+                successDiv.textContent = result.message || 'DKIM key created.';
+                successDiv.classList.remove('d-none');
+                setTimeout(() => { window.location.reload(); }, 1200);
+            } else {
+                errorDiv.textContent = result.message || 'Failed to create DKIM key.';
+                errorDiv.classList.remove('d-none');
+            }
+        } catch (err) {
+            errorDiv.textContent = 'Error creating DKIM key.';
+            errorDiv.classList.remove('d-none');
+        }
     });
 </script>
 {% endblock %}

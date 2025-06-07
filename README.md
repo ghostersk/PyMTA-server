@@ -1,6 +1,9 @@
 # PyMTA-server
 Python Email server for sending emails directly to recipient ( no email Relay)
-
+```bash
+# Testing
+.venv/bin/python app.py --web-only --debug
+```
 ## Plan:
 - make full python MTA server with front end to allow sending any email
 - include DKIM

@@ -1,129 +1,149 @@
 {% extends "base.html" %}
 
-{% block title %}Edit DKIM Key - Email Server{% endblock %}
+{% block title %}Edit DKIM Selector{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-            <i class="bi bi-shield-check me-2"></i>
-            Edit DKIM Key for {{ domain.domain_name }}
-        </h2>
-        <a href="{{ url_for('email.dkim_list') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>
-            Back to DKIM Keys
-        </a>
-    </div>
-
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-key me-2"></i>
-                        DKIM Key Configuration
-                    </h5>
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="bi bi-pencil me-2"></i>Edit DKIM Selector
+                    </h4>
+                    <a href="{{ url_for('email.dkim_list') }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to DKIM Keys
+                    </a>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="POST" class="needs-validation" novalidate>
                         <div class="mb-3">
-                            <label for="domain_name" class="form-label">Domain</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="domain_name" 
-                                   value="{{ domain.domain_name }}" 
-                                   readonly>
-                            <div class="form-text">The domain this DKIM key belongs to (read-only)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="selector" class="form-label">DKIM Selector</label>
+                            <label for="selector" class="form-label">
+                                <i class="bi bi-key me-1"></i>DKIM Selector
+                            </label>
                             <input type="text" 
                                    class="form-control" 
                                    id="selector" 
                                    name="selector" 
-                                   value="{{ dkim_key.selector }}" 
-                                   maxlength="50"
-                                   pattern="[a-zA-Z0-9_-]+"
+                                   value="{{ dkim_key.selector }}"
+                                   placeholder="default"
+                                   pattern="^[a-zA-Z0-9_-]+$"
                                    required>
+                            <div class="invalid-feedback">
+                                Please provide a valid selector (letters, numbers, hyphens, and underscores only).
+                            </div>
                             <div class="form-text">
-                                The DKIM selector (alphanumeric, hyphens, and underscores only). 
-                                This will be used in DNS record names like <code>[selector]._domainkey.{{ domain.domain_name }}</code>
+                                <i class="bi bi-info-circle me-1"></i>
+                                The selector is used in DNS records to identify this DKIM key (e.g., "selector._domainkey.{{ domain.domain_name }}")
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Key Information</label>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <strong>Created:</strong><br>
-                                    <small class="text-muted">{{ dkim_key.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Status:</strong><br>
-                                    {% if dkim_key.is_active %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Inactive</span>
-                                    {% endif %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <h6><i class="bi bi-info-circle me-1"></i>Current Information</h6>
+                                    <p class="mb-1">
+                                        <strong>Domain:</strong> {{ domain.domain_name }}
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>Current Selector:</strong> {{ dkim_key.selector }}
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>Status:</strong> 
+                                        {% if dkim_key.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>Created:</strong> {{ dkim_key.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    </p>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            <strong>Important:</strong> Changing the selector will require updating your DNS records. 
-                            The new DNS record name will be <code id="dns-preview">{{ dkim_key.selector }}._domainkey.{{ domain.domain_name }}</code>
+                            <div class="col-md-6">
+                                <div class="alert alert-warning">
+                                    <h6><i class="bi bi-exclamation-triangle me-1"></i>Important Note</h6>
+                                    <p class="mb-0">
+                                        Changing the selector will require updating your DNS records. 
+                                        Make sure to update the DNS record name from 
+                                        <code>{{ dkim_key.selector }}._domainkey.{{ domain.domain_name }}</code> 
+                                        to match the new selector name.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="d-flex justify-content-between">
                             <a href="{{ url_for('email.dkim_list') }}" class="btn btn-secondary">
-                                <i class="bi bi-x-circle me-2"></i>
-                                Cancel
+                                <i class="bi bi-x me-1"></i>Cancel
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle me-2"></i>
-                                Update DKIM Selector
+                                <i class="bi bi-save me-1"></i>Update Selector
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
+
+            <!-- DNS Record Information Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-dns me-2"></i>DNS Record Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-light">
+                        <h6>Current DNS Record</h6>
+                        <p class="mb-2">
+                            <strong>Name:</strong> <code>{{ dkim_key.selector }}._domainkey.{{ domain.domain_name }}</code>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Type:</strong> TXT
+                        </p>
+                    </div>
+                    <p class="text-muted">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        <strong>Tip:</strong> After changing the selector, you'll need to update your DNS provider 
+                        to use the new record name. The DNS record value will remain the same.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-    // Update DNS preview when selector changes
-    document.getElementById('selector').addEventListener('input', function() {
-        const selector = this.value || 'default';
-        const domain = '{{ domain.domain_name }}';
-        document.getElementById('dns-preview').textContent = `${selector}._domainkey.${domain}`;
-    });
+// Bootstrap validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
 
-    // Form validation
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const selector = document.getElementById('selector').value.trim();
-        
-        if (!selector) {
-            e.preventDefault();
-            alert('Selector is required');
-            return;
-        }
-        
-        if (!/^[a-zA-Z0-9_-]+$/.test(selector)) {
-            e.preventDefault();
-            alert('Selector must contain only letters, numbers, hyphens, and underscores');
-            return;
-        }
-        
-        if (selector.length > 50) {
-            e.preventDefault();
-            alert('Selector must be 50 characters or less');
-            return;
-        }
-    });
+// Selector validation
+document.getElementById('selector').addEventListener('input', function(e) {
+    const value = e.target.value;
+    
+    // Basic selector validation (alphanumeric, hyphens, underscores)
+    const selectorRegex = /^[a-zA-Z0-9_-]+$/;
+    
+    if (value && !selectorRegex.test(value)) {
+        e.target.setCustomValidity('Selector must contain only letters, numbers, hyphens, and underscores');
+    } else {
+        e.target.setCustomValidity('');
+    }
+});
 </script>
 {% endblock %}

@@ -32,8 +32,14 @@ class DKIMManager:
         """Generate a random DKIM selector name (8-12 chars)."""
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
-    def generate_dkim_keypair(self, domain_name, selector: str = None):
-        """Generate DKIM key pair for a domain, optionally with a custom selector."""
+    def generate_dkim_keypair(self, domain_name, selector: str = None, force_new_key: bool = False):
+        """Generate DKIM key pair for a domain, optionally with a custom selector.
+        
+        Args:
+            domain_name: The domain to generate the key for
+            selector: Custom selector name. If None, generates random one
+            force_new_key: If True, always create a new key even if selector exists
+        """
         session = Session()
         try:
             # Check if domain exists
@@ -45,11 +51,42 @@ class DKIMManager:
             # Use provided selector or instance selector
             use_selector = selector or self.selector
             
-            # Check if DKIM key with this selector already exists
-            existing_key = session.query(DKIMKey).filter_by(domain_id=domain.id, selector=use_selector, is_active=True).first()
-            if existing_key:
-                logger.debug(f"DKIM key already exists for domain {domain_name} and selector {use_selector}")
-                return True
+            # Ensure only one active DKIM key per domain - mark existing keys as replaced
+            existing_active_keys = session.query(DKIMKey).filter_by(domain_id=domain.id, is_active=True).all()
+            for existing_key in existing_active_keys:
+                existing_key.is_active = False
+                existing_key.replaced_at = datetime.now()
+                logger.debug(f"Marked DKIM key as replaced for domain {domain_name} selector {existing_key.selector}")
+            
+            # Check if we're reusing an existing selector - if so, reactivate instead of creating new
+            # Skip this check if force_new_key is True (for regeneration)
+            if not force_new_key:
+                existing_key_with_selector = session.query(DKIMKey).filter_by(
+                    domain_id=domain.id, 
+                    selector=use_selector
+                ).first()
+                
+                if existing_key_with_selector and not existing_key_with_selector.is_active:
+                    # Before re-activating, ensure no other DKIM is active for this domain
+                    other_active_keys = session.query(DKIMKey).filter(
+                        DKIMKey.domain_id == domain.id,
+                        DKIMKey.is_active == True,
+                        DKIMKey.id != existing_key_with_selector.id
+                    ).all()
+                    for key in other_active_keys:
+                        key.is_active = False
+                        key.replaced_at = datetime.now()
+                        logger.debug(f"Deactivated other active DKIM key for domain {domain_name} selector {key.selector}")
+                    # Reactivate existing key with same selector, clear replaced_at timestamp
+                    existing_key_with_selector.is_active = True
+                    existing_key_with_selector.replaced_at = None
+                    session.commit()
+                    logger.debug(f"Reactivated existing DKIM key for domain {domain_name} selector {use_selector}")
+                    return True
+                elif existing_key_with_selector and existing_key_with_selector.is_active:
+                    # Key is already active (shouldn't happen due to deactivation above, but just in case)
+                    logger.debug(f"DKIM key already active for domain {domain_name} and selector {use_selector}")
+                    return True
             
             # Generate RSA key pair
             private_key = rsa.generate_private_key(
@@ -118,7 +155,7 @@ class DKIMManager:
     def get_dkim_public_key_record(self, domain_name):
         """Get DKIM public key DNS record for a domain (active key only)."""
         dkim_key = self.get_active_dkim_key(domain_name)
-        if dkim_key:
+        if (dkim_key):
             public_key_lines = dkim_key.public_key.strip().split('\n')
             public_key_data = ''.join(public_key_lines[1:-1])  # Remove header/footer
             return {

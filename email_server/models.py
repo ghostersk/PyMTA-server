@@ -176,6 +176,7 @@ class DKIMKey(Base):
     public_key = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
+    replaced_at = Column(DateTime, nullable=True)  # When this key was replaced by a new one
     
     def __repr__(self):
         return f"<DKIMKey(id={self.id}, domain_id={self.domain_id}, selector='{self.selector}', active={self.is_active})>"
