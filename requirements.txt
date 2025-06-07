@@ -1,4 +1,8 @@
-# SMTP MTA server:
+# SMTP MTA server
+# then you can allow run ports < 1024 with 
+# create env with `python -m venv .venv --copies` (This will copy the Python binary)
+# for f in /opt/PyMTA-server/.venv/bin/python*; do sudo setcap 'cap_net_bind_service=+ep' "$f"; done
+
 aiosmtpd
 sqlalchemy
 pyOpenSSL

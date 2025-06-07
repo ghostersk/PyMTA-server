@@ -9,7 +9,6 @@ Security Features:
 """
 
 import uuid
-import email.utils
 from datetime import datetime
 from aiosmtpd.smtp import SMTP as AIOSMTP, AuthResult
 from aiosmtpd.controller import Controller
@@ -61,48 +60,145 @@ class EnhancedCustomSMTPHandler:
         self.auth_require_tls = False
         self.auth_methods = ['LOGIN', 'PLAIN']
 
-    def _ensure_required_headers(self, content: str, envelope, message_id: str) -> str:
+    def _ensure_required_headers(self, content: str, envelope, message_id: str, custom_headers: list = None) -> str:
         """Ensure all required email headers are present and properly formatted.
-
+        
         Args:
             content (str): Email content.
             envelope: SMTP envelope.
             message_id (str): Generated message ID.
-
+            custom_headers (list): List of (name, value) tuples for custom headers.
+            
         Returns:
-            str: Email content with all required headers.
+            str: Email content with all required headers properly formatted.
         """
-        import email
-        from email.parser import Parser
-        from email.policy import default
-
-        # Parse the message using the email library
-        msg = Parser(policy=default).parsestr(content)
-
-        # Set or add required headers if missing
-        if not msg.get('Message-ID'):
-            msg['Message-ID'] = f"<{message_id}@{envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else 'localhost'}>"
-        if not msg.get('Date'):
-            msg['Date'] = email.utils.formatdate(localtime=True)
-        if not msg.get('From'):
-            msg['From'] = envelope.mail_from
-        if not msg.get('To'):
-            msg['To'] = ', '.join(envelope.rcpt_tos)
-        if not msg.get('MIME-Version'):
-            msg['MIME-Version'] = '1.0'
-        if not msg.get('Content-Type'):
-            msg['Content-Type'] = 'text/plain; charset=utf-8'
-        if not msg.get('Subject'):
-            msg['Subject'] = '(No Subject)'
-        if not msg.get('Content-Transfer-Encoding'):
-            msg['Content-Transfer-Encoding'] = '7bit'
-
-        # Ensure exactly one blank line between headers and body
-        # The email library will handle this when flattening
-        from io import StringIO
-        out = StringIO()
-        out.write(msg.as_string())
-        return out.getvalue()
+        import email.utils
+        
+        try:
+            logger.debug(f"Processing headers for message {message_id}")
+            
+            # Parse the message properly
+            if isinstance(content, bytes):
+                content = content.decode('utf-8', errors='replace')
+            
+            # Split content into lines and normalize line endings
+            lines = content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+            
+            # Find header/body boundary and collect existing headers
+            body_start = 0
+            existing_headers = {}
+            
+            for i, line in enumerate(lines):
+                if line.strip() == '':
+                    body_start = i + 1
+                    break
+                if ':' in line and not line.startswith((' ', '\t')):
+                    header_name, header_value = line.split(':', 1)
+                    header_name_lower = header_name.strip().lower()
+                    header_value = header_value.strip()
+                    
+                    # Handle continuation lines
+                    j = i + 1
+                    while j < len(lines) and lines[j].startswith((' ', '\t')):
+                        header_value += ' ' + lines[j].strip()
+                        j += 1
+                    
+                    existing_headers[header_name_lower] = header_value
+                    logger.debug(f"Found existing header: {header_name_lower} = {header_value}")
+            
+            # Extract body
+            body_lines = lines[body_start:] if body_start < len(lines) else []
+            while body_lines and body_lines[-1].strip() == '':
+                body_lines.pop()
+            body = '\n'.join(body_lines)
+            
+            # Build required headers list
+            required_headers = []
+            
+            # Add custom headers first
+            if custom_headers:
+                for header_name, header_value in custom_headers:
+                    required_headers.append(f"{header_name}: {header_value}")
+                    logger.debug(f"Added custom header: {header_name}: {header_value}")
+            
+            # Message-ID (always add to ensure it's present)
+            if 'message-id' in existing_headers:
+                required_headers.append(f"Message-ID: {existing_headers['message-id']}")
+            else:
+                domain = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else 'localhost'
+                required_headers.append(f"Message-ID: <{message_id}@{domain}>")
+            
+            # Date
+            if 'date' in existing_headers:
+                required_headers.append(f"Date: {existing_headers['date']}")
+            else:
+                date_str = email.utils.formatdate(localtime=True)
+                required_headers.append(f"Date: {date_str}")
+            
+            # From (required)
+            if 'from' in existing_headers:
+                required_headers.append(f"From: {existing_headers['from']}")
+            else:
+                required_headers.append(f"From: {envelope.mail_from}")
+            
+            # To (required)
+            if 'to' in existing_headers:
+                required_headers.append(f"To: {existing_headers['to']}")
+            else:
+                to_list = ', '.join(envelope.rcpt_tos)
+                required_headers.append(f"To: {to_list}")
+            
+            # Subject (preserve existing or add empty)
+            if 'subject' in existing_headers:
+                required_headers.append(f"Subject: {existing_headers['subject']}")
+            else:
+                required_headers.append("Subject: ")
+            
+            # MIME headers
+            if 'mime-version' in existing_headers:
+                required_headers.append(f"MIME-Version: {existing_headers['mime-version']}")
+            else:
+                required_headers.append("MIME-Version: 1.0")
+            
+            if 'content-type' in existing_headers:
+                required_headers.append(f"Content-Type: {existing_headers['content-type']}")
+            else:
+                required_headers.append("Content-Type: text/plain; charset=utf-8")
+            
+            if 'content-transfer-encoding' in existing_headers:
+                required_headers.append(f"Content-Transfer-Encoding: {existing_headers['content-transfer-encoding']}")
+            else:
+                required_headers.append("Content-Transfer-Encoding: 7bit")
+            
+            # Add any other existing headers
+            essential_headers = {
+                'message-id', 'date', 'from', 'to', 'subject', 
+                'mime-version', 'content-type', 'content-transfer-encoding'
+            }
+            
+            for header_name, header_value in existing_headers.items():
+                if header_name not in essential_headers:
+                    required_headers.append(f"{header_name.title()}: {header_value}")
+            
+            # Build final message
+            final_content = '\r\n'.join(required_headers)
+            if body.strip():
+                final_content += '\r\n\r\n' + body
+            else:
+                final_content += '\r\n\r\n'
+            
+            logger.debug(f"Final headers for message {message_id}:")
+            for header in required_headers:
+                logger.debug(f"  {header}")
+            
+            return final_content
+            
+        except Exception as e:
+            logger.error(f"Error ensuring headers: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Fallback to original content if parsing fails
+            return content
 
     async def handle_DATA(self, server, session, envelope):
         """Handle incoming email data."""
@@ -119,26 +215,24 @@ class EnhancedCustomSMTPHandler:
             # Extract domain from sender for DKIM signing
             sender_domain = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else None
             
-            # Ensure required headers are present
-            content = self._ensure_required_headers(content, envelope, message_id)
-            
-            # Add custom headers before DKIM signing
+            # Get custom headers before processing
+            custom_headers = []
             if sender_domain:
                 custom_headers = self.dkim_manager.get_active_custom_headers(sender_domain)
-                for header_name, header_value in custom_headers:
-                    # Insert header at the top of the message
-                    content = f"{header_name}: {header_value}\r\n" + content
             
-            # Relay the email (all modifications done)
+            # Ensure required headers are present (including custom headers)
+            content = self._ensure_required_headers(content, envelope, message_id, custom_headers)
+            
+            # DKIM-sign the final version of the message (only once, after all modifications)
             signed_content = content
             dkim_signed = False
             if sender_domain:
-                # DKIM-sign the final version of the message
                 signed_content = self.dkim_manager.sign_email(content, sender_domain)
                 dkim_signed = signed_content != content
                 if dkim_signed:
                     logger.debug(f'Email {message_id} signed with DKIM for domain {sender_domain}')
             
+            # Relay the email (no further modifications allowed)
             success = self.email_relay.relay_email(
                 envelope.mail_from, 
                 envelope.rcpt_tos, 
