@@ -15,9 +15,25 @@ from aiosmtpd.controller import Controller
 from email_server.auth import EnhancedAuthenticator, EnhancedIPAuthenticator, validate_sender_authorization, get_authenticated_domain_id
 from email_server.email_relay import EmailRelay
 from email_server.dkim_manager import DKIMManager
+from email_server.settings_loader import load_settings
 from email_server.tool_box import get_logger
 
 logger = get_logger()
+
+class CustomSMTP(AIOSMTP):
+    """Custom SMTP class with configurable banner."""
+    
+    def __init__(self, *args, **kwargs):
+        # Sets Custom SMTP banner from settings
+        settings = load_settings()
+        _banner_message = settings['Server'].get('server_banner', '')
+        if _banner_message == '""':
+            _banner_message = ''
+        self.custom_banner = _banner_message
+            
+        super().__init__(*args, **kwargs)
+        # Override the __ident__ to use our custom banner
+        self.__ident__ = self.custom_banner
 
 class EnhancedCombinedAuthenticator:
     """
@@ -348,7 +364,7 @@ class TLSController(Controller):
         logger.debug(f"TLSController factory: ssl_context={self._ssl_context is not None}")
         logger.debug(f"TLSController factory: ssl_context object={self._ssl_context}")
         logger.debug(f"TLSController factory: hostname={self.smtp_hostname}")
-        smtp_instance = AIOSMTP(
+        smtp_instance = CustomSMTP(
             self.handler,
             tls_context=self._ssl_context,
             require_starttls=False,  # Don't require STARTTLS immediately, but make it available
@@ -357,7 +373,7 @@ class TLSController(Controller):
             decode_data=True,
             hostname=self.smtp_hostname  # Use proper hostname for HELO
         )
-        logger.debug(f"TLSController AIOSMTP instance created with TLS: {hasattr(smtp_instance, 'tls_context')}")
+        logger.debug(f"TLSController CustomSMTP instance created with TLS: {hasattr(smtp_instance, 'tls_context')}")
         return smtp_instance
 
 class PlainController(Controller):
@@ -368,7 +384,7 @@ class PlainController(Controller):
         super().__init__(handler, hostname='0.0.0.0', port=port)  # Bind to all interfaces
     
     def factory(self):
-        return AIOSMTP(
+        return CustomSMTP(
             self.handler,
             authenticator=self.handler.combined_authenticator,
             auth_require_tls=False,  # Allow AUTH over plain text (not recommended for production)

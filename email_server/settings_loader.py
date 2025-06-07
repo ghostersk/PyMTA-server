@@ -16,6 +16,7 @@ DEFAULTS = {
         'HOSTNAME': 'mail.example.com',
         'helo_hostname': 'mail.example.com',
         'BIND_IP': '0.0.0.0',
+        'server_banner': "",
     },
     'Database': {
         'DATABASE_URL': 'sqlite:///email_server/server_data/smtp_server.db',
