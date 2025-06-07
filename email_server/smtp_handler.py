@@ -96,7 +96,8 @@ class EnhancedCustomSMTPHandler:
         
         try:
             settings = load_settings()
-            server_hostname = settings.get('Server', 'helo_hostname', fallback='mail.netbro.uk')
+            fallback_hostname = settings.get('Server', 'HOSTNAME', fallback='localhost')
+            server_hostname = settings.get('Server', 'helo_hostname', fallback=fallback_hostname)
             
             logger.debug(f"Processing headers for message {message_id}")
             
