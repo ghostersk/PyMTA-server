@@ -1,8 +1,10 @@
-# SMTP MTA server
-# then you can allow run ports < 1024 with 
-# create env with `python -m venv .venv --copies` (This will copy the Python binary)
-# for f in /opt/PyMTA-server/.venv/bin/python*; do sudo setcap 'cap_net_bind_service=+ep' "$f"; done
+# SMTP Server with Web Management Frontend
+# Unified requirements for both SMTP server and Flask web interface
+#
+# For port binding < 1024, create env with `python -m venv .venv --copies` (This will copy the Python binary)
+# Then run: for f in /path/to/.venv/bin/python*; do sudo setcap 'cap_net_bind_service=+ep' "$f"; done
 
+# Core SMTP Server Dependencies
 aiosmtpd
 sqlalchemy
 pyOpenSSL
@@ -10,3 +12,14 @@ bcrypt
 dnspython
 dkimpy
 cryptography
+
+# Web Frontend Dependencies
+Flask
+Flask-SQLAlchemy
+Jinja2
+Werkzeug
+requests
+waitress
+
+# Additional utilities
+alembic

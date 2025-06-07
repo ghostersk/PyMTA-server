@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Add User - Email Server{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-person-plus me-2"></i>
+                        Add New User
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   required 
+                                   placeholder="user@example.com">
+                            <div class="form-text">
+                                The email address for authentication and sending
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="password" 
+                                   name="password" 
+                                   required 
+                                   minlength="6">
+                            <div class="form-text">
+                                Minimum 6 characters
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="domain_id" class="form-label">Domain</label>
+                            <select class="form-select" id="domain_id" name="domain_id" required>
+                                <option value="">Select a domain...</option>
+                                {% for domain in domains %}
+                                <option value="{{ domain.id }}">{{ domain.domain_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                The domain this user belongs to
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="can_send_as_domain" 
+                                       name="can_send_as_domain">
+                                <label class="form-check-label" for="can_send_as_domain">
+                                    <strong>Domain Administrator</strong>
+                                </label>
+                                <div class="form-text">
+                                    If checked, user can send emails as any address in their domain.
+                                    Otherwise, user can only send as their own email address.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Permission Levels
+                            </h6>
+                            <ul class="mb-0">
+                                <li><strong>Regular User:</strong> Can only send emails from their own email address</li>
+                                <li><strong>Domain Admin:</strong> Can send emails from any address in their domain (e.g., noreply@domain.com, support@domain.com)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('email.users_list') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to Users
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-person-plus me-2"></i>
+                                Add User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Domain information sidebar -->
+<div class="row mt-4">
+    {% if domains %}
+    <div class="col-md-6 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Available Domains
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for domain in domains %}
+                    <div class="col-md-6 mb-2">
+                        <div class="border rounded p-2">
+                            <div class="fw-bold">{{ domain.domain_name }}</div>
+                            <small class="text-muted">
+                                Created: {{ domain.created_at.strftime('%Y-%m-%d') }}
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-fill domain based on email input
+    document.getElementById('email').addEventListener('input', function(e) {
+        const email = e.target.value;
+        const atIndex = email.indexOf('@');
+        
+        if (atIndex > -1) {
+            const domain = email.substring(atIndex + 1).toLowerCase();
+            const domainSelect = document.getElementById('domain_id');
+            
+            // Try to find matching domain in select options
+            for (let option of domainSelect.options) {
+                if (option.text.toLowerCase() === domain) {
+                    domainSelect.value = option.value;
+                    break;
+                }
+            }
+        }
+    });
+    
+    // Show/hide domain admin explanation
+    document.getElementById('can_send_as_domain').addEventListener('change', function(e) {
+        const isChecked = e.target.checked;
+        const domainSelect = document.getElementById('domain_id');
+        const selectedDomain = domainSelect.options[domainSelect.selectedIndex]?.text || 'domain.com';
+        
+        // Update help text dynamically
+        const helpText = e.target.closest('.form-check').querySelector('.form-text');
+        if (isChecked) {
+            helpText.innerHTML = `User can send as any address in ${selectedDomain} (e.g., noreply@${selectedDomain}, support@${selectedDomain})`;
+        } else {
+            helpText.innerHTML = 'User can only send as their own email address.';
+        }
+    });
+    
+    // Update help text when domain changes
+    document.getElementById('domain_id').addEventListener('change', function(e) {
+        const checkbox = document.getElementById('can_send_as_domain');
+        if (checkbox.checked) {
+            checkbox.dispatchEvent(new Event('change'));
+        }
+    });
+</script>
+{% endblock %}

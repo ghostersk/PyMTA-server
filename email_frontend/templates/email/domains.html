@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Domains - Email Server Management{% endblock %}
+{% block page_title %}Domain Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-globe me-2"></i>
+        Domains
+    </h2>
+    <a href="{{ url_for('email.add_domain') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>
+        Add Domain
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-list-ul me-2"></i>
+            All Domains
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% if domains %}
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Domain Name</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Users</th>
+                            <th>DKIM</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for domain in domains %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ domain.domain_name }}</div>
+                            </td>
+                            <td>
+                                {% if domain.is_active %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Active
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ domain.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ domain.users|length if domain.users else 0 }} users
+                                </span>
+                            </td>
+                            <td>
+                                {% set has_dkim = domain.dkim_keys and domain.dkim_keys|selectattr('is_active')|list %}
+                                {% if has_dkim %}
+                                    <span class="text-success">
+                                        <i class="bi bi-shield-check" title="DKIM Configured"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="text-warning">
+                                        <i class="bi bi-shield-exclamation" title="No DKIM Key"></i>
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('email.dkim_list') }}#domain-{{ domain.id }}" 
+                                       class="btn btn-outline-info"
+                                       title="Manage DKIM">
+                                        <i class="bi bi-key"></i>
+                                    </a>
+                                    {% if domain.is_active %}
+                                        <form method="post" action="{{ url_for('email.delete_domain', domain_id=domain.id) }}" class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-danger"
+                                                    data-confirm="Are you sure you want to deactivate domain '{{ domain.domain_name }}'?"
+                                                    title="Deactivate Domain">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-globe text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">No domains configured</h4>
+                <p class="text-muted">Get started by adding your first domain</p>
+                <a href="{{ url_for('email.add_domain') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Add Your First Domain
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if domains %}
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Domain Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Active domains:</strong> {{ domains|selectattr('is_active')|list|length }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-shield-check text-warning me-2"></i>
+                        <strong>DKIM configured:</strong> {{ domains|selectattr('dkim_keys')|list|length }}
+                    </li>
+                    <li>
+                        <i class="bi bi-people text-info me-2"></i>
+                        <strong>Total users:</strong> {{ domains|sum(attribute='users')|length if domains[0].users is defined else 'N/A' }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Quick Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-arrow-right text-primary me-2"></i>
+                        DKIM keys are automatically generated for new domains
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-arrow-right text-primary me-2"></i>
+                        Configure DNS records after adding domains
+                    </li>
+                    <li>
+                        <i class="bi bi-arrow-right text-primary me-2"></i>
+                        Add users or whitelist IPs for authentication
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

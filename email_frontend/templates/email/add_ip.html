@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Add IP Address - Email Server{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-plus me-2"></i>
+                        Add IP Address to Whitelist
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="ip_address" class="form-label">IP Address</label>
+                            <input type="text" 
+                                   class="form-control font-monospace" 
+                                   id="ip_address" 
+                                   name="ip_address" 
+                                   required 
+                                   pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                   placeholder="192.168.1.100"
+                                   value="{{ request.args.get('ip', '') }}">
+                            <div class="form-text">
+                                IPv4 address that will be allowed to send emails without authentication
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="domain_id" class="form-label">Authorized Domain</label>
+                            <select class="form-select" id="domain_id" name="domain_id" required>
+                                <option value="">Select a domain...</option>
+                                {% for domain in domains %}
+                                <option value="{{ domain.id }}">{{ domain.domain_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                This IP will only be able to send emails for the selected domain
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Security Note
+                            </h6>
+                            <ul class="mb-0">
+                                <li>Only whitelist trusted IP addresses</li>
+                                <li>This IP can send emails without username/password authentication</li>
+                                <li>The IP is restricted to the selected domain only</li>
+                                <li>Use static IP addresses for reliable access</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('email.ips_list') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to IP List
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-shield-plus me-2"></i>
+                                Add to Whitelist
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current IP Detection and Available Domains -->
+<div class="row mt-4">
+    <div class="col-md-4 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-geo-alt me-2"></i>
+                    Your Current IP
+                </h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="fw-bold font-monospace fs-5 mb-2" id="current-ip">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Detecting...
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="useCurrentIP()">
+                    <i class="bi bi-arrow-up me-1"></i>
+                    Use This IP
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    {% if domains %}
+    <div class="col-md-4 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-server me-2"></i>
+                    Available Domains
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for domain in domains %}
+                <div class="mb-2">
+                    <div class="fw-bold">{{ domain.domain_name }}</div>
+                    <small class="text-muted">
+                        Created: {{ domain.created_at.strftime('%Y-%m-%d') }}
+                    </small>
+                </div>
+                {% if not loop.last %}<hr class="my-2">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Example Use Cases -->
+<div class="row mt-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Common Use Cases
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">
+                            <i class="bi bi-server me-1"></i>
+                            Application Servers
+                        </h6>
+                        <p class="text-muted small">
+                            Web applications that need to send transactional emails 
+                            (password resets, notifications, etc.)
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">
+                            <i class="bi bi-clock me-1"></i>
+                            Scheduled Tasks
+                        </h6>
+                        <p class="text-muted small">
+                            Cron jobs or scheduled scripts that send automated 
+                            reports or alerts
+                        </p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-warning">
+                            <i class="bi bi-monitor me-1"></i>
+                            Monitoring Systems
+                        </h6>
+                        <p class="text-muted small">
+                            Monitoring tools that send alerts and status updates 
+                            to administrators
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-info">
+                            <i class="bi bi-cloud me-1"></i>
+                            Cloud Services
+                        </h6>
+                        <p class="text-muted small">
+                            Cloud-based applications or services that need to 
+                            send emails on behalf of your domain
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Detect current IP address
+    async function detectCurrentIP() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            document.getElementById('current-ip').innerHTML = 
+                `<span class="text-primary">${data.ip}</span>`;
+        } catch (error) {
+            document.getElementById('current-ip').innerHTML = 
+                '<span class="text-muted">Unable to detect</span>';
+        }
+    }
+    
+    function useCurrentIP() {
+        const currentIPElement = document.getElementById('current-ip');
+        const ip = currentIPElement.textContent.trim();
+        
+        if (ip && ip !== 'Detecting...' && ip !== 'Unable to detect') {
+            document.getElementById('ip_address').value = ip;
+            // Focus on domain selection
+            document.getElementById('domain_id').focus();
+        } else {
+            alert('Unable to detect current IP address');
+        }
+    }
+    
+    // IP address validation
+    document.getElementById('ip_address').addEventListener('input', function(e) {
+        const ip = e.target.value;
+        const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        
+        if (ip && !ipPattern.test(ip)) {
+            e.target.setCustomValidity('Please enter a valid IPv4 address');
+        } else {
+            e.target.setCustomValidity('');
+        }
+    });
+    
+    // Auto-detect IP on page load
+    detectCurrentIP();
+</script>
+{% endblock %}

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Email Server Management{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --sidebar-width: 280px;
+        }
+        
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .content-area {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .navbar-brand {
+            color: #fff !important;
+        }
+        
+        .card {
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+        }
+        
+        .table-dark {
+            --bs-table-bg: #2d2d2d;
+            --bs-table-border-color: #404040;
+        }
+        
+        .btn-outline-light:hover {
+            background-color: #495057;
+        }
+        
+        .alert-success {
+            background-color: #0f5132;
+            border-color: #146c43;
+            color: #75b798;
+        }
+        
+        .alert-danger {
+            background-color: #58151c;
+            border-color: #842029;
+            color: #ea868f;
+        }
+        
+        .alert-warning {
+            background-color: #664d03;
+            border-color: #997404;
+            color: #ffda6a;
+        }
+        
+        .alert-info {
+            background-color: #055160;
+            border-color: #087990;
+            color: #6edff6;
+        }
+        
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .form-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .text-muted {
+            color: #adb5bd !important;
+        }
+        
+        .border-success {
+            border-color: #198754 !important;
+        }
+        
+        .border-danger {
+            border-color: #dc3545 !important;
+        }
+        
+        .text-success {
+            color: #75b798 !important;
+        }
+        
+        .text-danger {
+            color: #ea868f !important;
+        }
+        
+        .text-warning {
+            color: #ffda6a !important;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #495057;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6c757d;
+        }
+    </style>
+    
+    <!-- Custom SMTP Management CSS -->
+    <link href="{{ url_for('email.static', filename='css/smtp-management.css') }}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="main-container">
+        <!-- Sidebar -->
+        {% include 'sidebar_email.html' %}
+        
+        <!-- Main content -->
+        <div class="content-area">
+            <!-- Top navbar -->
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+                <div class="container-fluid">
+                    <span class="navbar-brand mb-0 h1">
+                        <i class="bi bi-envelope-fill me-2"></i>
+                        {% block page_title %}Email Server Management{% endblock %}
+                    </span>
+                    <div class="navbar-nav ms-auto">
+                        <span class="navbar-text">
+                            <i class="bi bi-clock-fill me-1"></i>
+                            <span id="current-time"></span>
+                        </span>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="row">
+                        <div class="col-12">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Page content -->
+            <main>
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script>
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const dateString = now.toLocaleDateString();
+            document.getElementById('current-time').textContent = `${dateString} ${timeString}`;
+        }
+        
+        // Update time every second
+        setInterval(updateTime, 1000);
+        updateTime(); // Initial call
+        
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+            alerts.forEach(function(alert) {
+                const bootstrapAlert = new bootstrap.Alert(alert);
+                bootstrapAlert.close();
+            });
+        }, 5000);
+        
+        // Confirmation dialogs for delete actions
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteButtons = document.querySelectorAll('[data-confirm]');
+            deleteButtons.forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    if (!confirm(this.getAttribute('data-confirm'))) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+    
+    <!-- Custom SMTP Management JavaScript -->
+    <script src="{{ url_for('email.static', filename='js/smtp-management.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

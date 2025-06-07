@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+Jinja2
+Werkzeug
+dnspython
+cryptography
+requests
