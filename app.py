@@ -22,6 +22,7 @@ import argparse
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -66,6 +67,24 @@ class SMTPServerApp:
             self.smtp_task.cancel()
             logger.info("SMTP server stopped")
     
+    def _get_absolute_database_url(self):
+        """Convert relative database URL to absolute path for Flask-SQLAlchemy"""
+        db_url = self.settings['Database']['database_url']
+        
+        # If it's already absolute or not a SQLite file path, return as-is
+        if not db_url.startswith('sqlite:///') or db_url.startswith('sqlite:////'):
+            return db_url
+        
+        # Convert relative SQLite path to absolute
+        # Remove 'sqlite:///' prefix
+        relative_path = db_url[10:]  # len('sqlite:///') = 10
+        
+        # Get absolute path relative to project root
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        absolute_path = os.path.join(project_root, relative_path)
+        
+        return f'sqlite:///{absolute_path}'
+
     def create_flask_app(self):
         """Create and configure the Flask application"""
         app = Flask(__name__, 
@@ -75,7 +94,8 @@ class SMTPServerApp:
         # Flask configuration
         app.config.update({
             'SECRET_KEY': self.settings.get('Flask', 'secret_key', fallback='change-this-secret-key-in-production'),
-            'SQLALCHEMY_DATABASE_URI': f"sqlite:///{self.settings.get('Database', 'database_path', fallback='email_server/server_data/smtp_server.db')}",
+            # Convert relative database path to absolute path
+            'SQLALCHEMY_DATABASE_URI': self._get_absolute_database_url(),
             'SQLALCHEMY_TRACK_MODIFICATIONS': False,
             'TEMPLATES_AUTO_RELOAD': True,
             'SEND_FILE_MAX_AGE_DEFAULT': 0  # Disable caching for development
@@ -83,6 +103,13 @@ class SMTPServerApp:
         
         # Initialize database
         db = SQLAlchemy(app)
+        
+        # Import existing models and register them with Flask-SQLAlchemy
+        from email_server.models import Base, Domain, User, WhitelistedIP, DKIMKey, EmailLog, AuthLog, CustomHeader
+        # Set the metadata for Flask-Migrate to use existing models
+        db.Model.metadata = Base.metadata
+        
+        migrate = Migrate(app, db, directory='migrations')
         
         # Create database tables if they don't exist
         with app.app_context():
@@ -422,6 +449,17 @@ Press Ctrl+C to stop the server
         logger.error(f"Application error: {e}")
         sys.exit(1)
 
+
+# For Flask CLI: expose a create_app() factory at module level
+smtp_server_app_instance = SMTPServerApp()
+
+def create_app():
+    """Flask application factory for CLI and Flask-Migrate support.
+
+    Returns:
+        Flask: The Flask application instance.
+    """
+    return smtp_server_app_instance.create_flask_app()
 
 if __name__ == '__main__':
     main()

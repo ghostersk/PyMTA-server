@@ -19,6 +19,7 @@ Flask-SQLAlchemy
 Jinja2
 Werkzeug
 requests
+Flask-Migrate>=4.0.0
 
 # Additional utilities
-alembic
+python-dotenv

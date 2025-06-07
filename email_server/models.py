@@ -16,7 +16,8 @@ from email_server.settings_loader import load_settings
 from email_server.tool_box import ensure_folder_exists, get_logger
 
 settings = load_settings()
-DATABASE_URL = settings['Database']['DATABASE_URL']
+# ConfigParser keys are case-insensitive, so we can use either case
+DATABASE_URL = settings['Database']['database_url']
 
 ensure_folder_exists(DATABASE_URL)
 
