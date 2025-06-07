@@ -7,6 +7,7 @@ import smtplib
 import ssl
 from datetime import datetime
 from email_server.models import Session, EmailLog
+from email_server.settings_loader import load_settings
 from email_server.tool_box import get_logger
 
 logger = get_logger()
@@ -16,6 +17,11 @@ class EmailRelay:
     
     def __init__(self):
         self.timeout = 30  # Increased timeout for TLS negotiations
+        # Get the configured hostname for HELO/EHLO identification
+        settings = load_settings()
+        self.hostname = settings['Server'].get('helo_hostname', 
+                                             settings['Server'].get('hostname', 'localhost'))
+        logger.debug(f"EmailRelay initialized with hostname: {self.hostname}")
     
     def relay_email(self, mail_from, rcpt_tos, content):
         """Relay email to recipient's mail server with opportunistic TLS."""
@@ -53,8 +59,9 @@ class EmailRelay:
                     
                     # Try to enable TLS if the server supports it
                     try:
-                        # Check if server supports STARTTLS
-                        relay_server.ehlo()
+                        # Check if server supports STARTTLS - use proper hostname for EHLO
+                        logger.debug(f'Sending EHLO {self.hostname} to {mx_host}')
+                        relay_server.ehlo(self.hostname)
                         if relay_server.has_extn('starttls'):
                             logger.debug(f'Starting TLS connection to {mx_host}')
                             context = ssl.create_default_context()
@@ -62,7 +69,8 @@ class EmailRelay:
                             context.check_hostname = False
                             context.verify_mode = ssl.CERT_NONE
                             relay_server.starttls(context=context)
-                            relay_server.ehlo()  # Say hello again after STARTTLS
+                            logger.debug(f'Sending EHLO {self.hostname} again after STARTTLS to {mx_host}')
+                            relay_server.ehlo(self.hostname)  # Say hello again after STARTTLS with proper hostname
                             logger.debug(f'TLS connection established to {mx_host}')
                         else:
                             logger.warning(f'Server {mx_host} does not support STARTTLS, using plain text')
@@ -94,13 +102,15 @@ class EmailRelay:
                                 
                                 # Try TLS with backup server too
                                 try:
-                                    backup_server.ehlo()
+                                    logger.debug(f'Sending EHLO {self.hostname} to backup {backup_mx}')
+                                    backup_server.ehlo(self.hostname)
                                     if backup_server.has_extn('starttls'):
                                         context = ssl.create_default_context()
                                         context.check_hostname = False
                                         context.verify_mode = ssl.CERT_NONE
                                         backup_server.starttls(context=context)
-                                        backup_server.ehlo()
+                                        logger.debug(f'Sending EHLO {self.hostname} again after STARTTLS to backup {backup_mx}')
+                                        backup_server.ehlo(self.hostname)
                                         logger.debug(f'TLS connection established to backup {backup_mx}')
                                 except Exception:
                                     logger.warning(f'STARTTLS failed with backup {backup_mx}, using plain text')

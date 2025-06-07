@@ -233,7 +233,7 @@ def main():
         print("Database tables created successfully")
     
     elif args.command == 'add-domain':
-        add_domain(args.domain, not args.no_auth)
+        add_domain(args.domain)
     
     elif args.command == 'add-user':
         add_user(args.email, args.password, args.domain)
