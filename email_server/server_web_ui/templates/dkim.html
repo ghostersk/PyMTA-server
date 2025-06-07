@@ -6,6 +6,7 @@
 <style>
     .dns-record {
         font-family: 'Courier New', monospace;
+        color: black;
         background-color: var(--bs-gray-100);
         border-radius: 0.375rem;
         padding: 0.75rem;
@@ -42,7 +43,7 @@
 
     {% for item in dkim_data %}
     <div class="card mb-4" id="domain-{{ item.domain.id }}">
-        <div class="card-header">
+        <div class="card-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-{{ item.domain.id }}" aria-expanded="false" aria-controls="collapse-{{ item.domain.id }}">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="bi bi-server me-2"></i>
@@ -58,6 +59,34 @@
                         <i class="bi bi-search me-1"></i>
                         Check DNS
                     </button>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('email.edit_dkim', dkim_id=item.dkim_key.id) }}" 
+                           class="btn btn-outline-info">
+                            <i class="bi bi-pencil me-1"></i>
+                            Edit
+                        </a>
+                        <form method="post" action="{{ url_for('email.toggle_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline">
+                            {% if item.dkim_key.is_active %}
+                                <button type="submit" class="btn btn-outline-warning">
+                                    <i class="bi bi-pause-circle me-1"></i>
+                                    Disable
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-outline-success">
+                                    <i class="bi bi-play-circle me-1"></i>
+                                    Enable
+                                </button>
+                            {% endif %}
+                        </form>
+                        <form method="post" action="{{ url_for('email.remove_dkim', dkim_id=item.dkim_key.id) }}" class="d-inline">
+                            <button type="submit" 
+                                    class="btn btn-outline-danger"
+                                    onclick="return confirm('Are you sure you want to permanently remove the DKIM key for {{ item.domain.domain_name }}? This action cannot be undone and you will lose the ability to sign emails until you regenerate a new key.')">
+                                <i class="bi bi-trash me-1"></i>
+                                Remove
+                            </button>
+                        </form>
+                    </div>
                     <form method="post" action="{{ url_for('email.regenerate_dkim', domain_id=item.domain.id) }}" class="d-inline">
                         <button type="submit" 
                                 class="btn btn-outline-warning"
@@ -67,9 +96,13 @@
                         </button>
                     </form>
                 </div>
+                <div class="ms-auto">
+                    <i class="bi bi-chevron-down" id="chevron-{{ item.domain.id }}"></i>
+                </div>
             </div>
         </div>
-        <div class="card-body">
+        <div class="collapse" id="collapse-{{ item.domain.id }}">
+            <div class="card-body">
             <div class="row">
                 <!-- DKIM DNS Record -->
                 <div class="col-lg-6 mb-3">
@@ -159,6 +192,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -284,8 +318,9 @@
         const domains = document.querySelectorAll('[id^="domain-"]');
         for (const domainCard of domains) {
             const domainId = domainCard.id.split('-')[1];
-            // Extract domain name and selector from the card
-            const domainName = domainCard.querySelector('h5').textContent.trim().split('\n')[0].trim();
+            // Extract domain name from the card header
+            const domainHeaderText = domainCard.querySelector('h5').textContent.trim();
+            const domainName = domainHeaderText.split('\n')[0].trim().replace(/^\s*\S+\s+/, ''); // Remove icon
             const selectorElement = domainCard.querySelector('code');
             if (selectorElement) {
                 const selector = selectorElement.textContent;
@@ -314,5 +349,29 @@
             console.error('Failed to copy: ', err);
         });
     }
+    
+    // Handle collapsible cards
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click handlers for card headers
+        document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(element) {
+            element.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-bs-target');
+                const chevronId = targetId.replace('#collapse-', '#chevron-');
+                const chevron = document.querySelector(chevronId);
+                
+                // Toggle chevron direction
+                if (chevron) {
+                    setTimeout(() => {
+                        const collapseElement = document.querySelector(targetId);
+                        if (collapseElement && collapseElement.classList.contains('show')) {
+                            chevron.className = 'bi bi-chevron-up';
+                        } else {
+                            chevron.className = 'bi bi-chevron-down';
+                        }
+                    }, 100);
+                }
+            });
+        });
+    });
 </script>
 {% endblock %}

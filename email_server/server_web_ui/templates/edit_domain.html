@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Domain{% endblock %}
+
+{% block navbar %}
+    {% include 'sidebar_email.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Edit Domain
+                    </h4>
+                    <a href="{{ url_for('email.domains') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Domains
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="domain_name" class="form-label">
+                                <i class="fas fa-globe me-1"></i>Domain Name
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="domain_name" 
+                                   name="domain_name" 
+                                   value="{{ domain.domain_name }}"
+                                   placeholder="example.com"
+                                   pattern="^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$"
+                                   required>
+                            <div class="invalid-feedback">
+                                Please provide a valid domain name.
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter a fully qualified domain name (e.g., example.com)
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle me-1"></i>Current Status</h6>
+                                    <p class="mb-1">
+                                        <strong>Status:</strong> 
+                                        {% if domain.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>Created:</strong> {{ domain.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    </p>
+                                    {% if domain.updated_at %}
+                                    <p class="mb-0">
+                                        <strong>Last Updated:</strong> {{ domain.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-exclamation-triangle me-1"></i>Note</h6>
+                                    <p class="mb-0">
+                                        Changing the domain name will affect all associated users, 
+                                        IP addresses, and DKIM keys. Make sure to update your DNS 
+                                        records accordingly.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('email.domains') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Update Domain
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Associated Records Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-link me-2"></i>Associated Records
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="h3 text-primary">{{ domain.users|length }}</div>
+                                <div class="text-muted">
+                                    <i class="fas fa-users me-1"></i>Users
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="h3 text-success">{{ domain.authorized_ips|length }}</div>
+                                <div class="text-muted">
+                                    <i class="fas fa-network-wired me-1"></i>IP Addresses
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <div class="h3 text-warning">{{ domain.dkim_keys|length }}</div>
+                                <div class="text-muted">
+                                    <i class="fas fa-key me-1"></i>DKIM Keys
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Bootstrap validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Domain name validation
+document.getElementById('domain_name').addEventListener('input', function(e) {
+    const value = e.target.value.toLowerCase();
+    e.target.value = value;
+    
+    // Basic domain validation
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+    
+    if (value && !domainRegex.test(value)) {
+        e.target.setCustomValidity('Invalid domain format');
+    } else {
+        e.target.setCustomValidity('');
+    }
+});
+</script>
+{% endblock %}

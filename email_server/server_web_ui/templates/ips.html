@@ -65,19 +65,45 @@
                                             </small>
                                         </td>
                                         <td>
-                                            {% if ip.is_active %}
-                                                <form method="post" action="{{ url_for('email.delete_ip', ip_id=ip.id) }}" class="d-inline">
+                                            <div class="btn-group" role="group">
+                                                <!-- Edit Button -->
+                                                <a href="{{ url_for('email.edit_ip', ip_id=ip.id) }}" 
+                                                   class="btn btn-outline-primary btn-sm"
+                                                   title="Edit IP">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                
+                                                <!-- Enable/Disable Button -->
+                                                {% if ip.is_active %}
+                                                    <form method="post" action="{{ url_for('email.delete_ip', ip_id=ip.id) }}" class="d-inline">
+                                                        <button type="submit" 
+                                                                class="btn btn-outline-warning btn-sm"
+                                                                title="Disable IP"
+                                                                onclick="return confirm('Disable {{ ip.ip_address }}?')">
+                                                            <i class="bi bi-pause-circle"></i>
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <form method="post" action="{{ url_for('email.enable_ip', ip_id=ip.id) }}" class="d-inline">
+                                                        <button type="submit" 
+                                                                class="btn btn-outline-success btn-sm"
+                                                                title="Enable IP"
+                                                                onclick="return confirm('Enable {{ ip.ip_address }}?')">
+                                                            <i class="bi bi-play-circle"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                
+                                                <!-- Permanent Remove Button -->
+                                                <form method="post" action="{{ url_for('email.remove_ip', ip_id=ip.id) }}" class="d-inline">
                                                     <button type="submit" 
                                                             class="btn btn-outline-danger btn-sm"
-                                                            onclick="return confirm('Remove {{ ip.ip_address }} from whitelist?')">
+                                                            title="Permanently Remove IP"
+                                                            onclick="return confirm('Permanently remove {{ ip.ip_address }}? This cannot be undone!')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
-                                            {% else %}
-                                                <span class="text-muted">
-                                                    <i class="bi bi-dash"></i>
-                                                </span>
-                                            {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -123,7 +149,7 @@
                                 <i class="bi bi-calendar text-muted me-2"></i>
                                 <strong>Latest addition:</strong> 
                                 {% set latest = ips|map(attribute='0')|max(attribute='created_at') %}
-                                {{ latest.strftime('%Y-%m-%d') if latest else 'N/A' }}
+                                {{ latest.created_at.strftime('%Y-%m-%d') if latest else 'N/A' }}
                             </li>
                         </ul>
                     {% endif %}

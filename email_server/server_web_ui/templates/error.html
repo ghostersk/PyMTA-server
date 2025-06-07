@@ -47,7 +47,7 @@
                 <div class="row mb-3">
                     <div class="col-sm-3"><strong>Timestamp:</strong></div>
                     <div class="col-sm-9">
-                        <span class="text-muted">{{ moment().format('YYYY-MM-DD HH:mm:ss') }}</span>
+                        <span class="text-muted">{{ current_time.strftime('%Y-%m-%d %H:%M:%S') if current_time else 'Unknown' }}</span>
                     </div>
                 </div>
                 
@@ -61,7 +61,7 @@
             <div class="card-footer">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <a href="{{ url_for('email_management.dashboard') }}" class="btn btn-primary">
+                        <a href="{{ url_for('email.dashboard') }}" class="btn btn-primary">
                             <i class="fas fa-home me-1"></i>
                             Return to Dashboard
                         </a>
@@ -140,7 +140,7 @@ function copyErrorDetails() {
         code: '{{ error_code or "Unknown" }}',
         message: '{{ error_message or "No message" }}',
         details: `{{ error_details or "No details" }}`,
-        timestamp: '{{ moment().format("YYYY-MM-DD HH:mm:ss") }}',
+        timestamp: '{{ current_time.strftime("%Y-%m-%d %H:%M:%S") if current_time else "Unknown" }}',
         url: '{{ request.url if request else "Unknown" }}'
     };
     

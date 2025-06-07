@@ -19,7 +19,6 @@ Flask-SQLAlchemy
 Jinja2
 Werkzeug
 requests
-waitress
 
 # Additional utilities
 alembic

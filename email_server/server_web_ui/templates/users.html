@@ -81,20 +81,45 @@
                                 </small>
                             </td>
                             <td>
-                                {% if user.is_active %}
-                                    <form method="post" action="{{ url_for('email.delete_user', user_id=user.id) }}" class="d-inline">
+                                <div class="btn-group" role="group">
+                                    <!-- Edit Button -->
+                                    <a href="{{ url_for('email.edit_user', user_id=user.id) }}" 
+                                       class="btn btn-outline-primary btn-sm"
+                                       title="Edit User">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    
+                                    <!-- Enable/Disable Button -->
+                                    {% if user.is_active %}
+                                        <form method="post" action="{{ url_for('email.delete_user', user_id=user.id) }}" class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-warning btn-sm"
+                                                    title="Disable User"
+                                                    onclick="return confirm('Disable user {{ user.email }}?')">
+                                                <i class="bi bi-pause-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{{ url_for('email.enable_user', user_id=user.id) }}" class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-success btn-sm"
+                                                    title="Enable User"
+                                                    onclick="return confirm('Enable user {{ user.email }}?')">
+                                                <i class="bi bi-play-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    <!-- Permanent Remove Button -->
+                                    <form method="post" action="{{ url_for('email.remove_user', user_id=user.id) }}" class="d-inline">
                                         <button type="submit" 
                                                 class="btn btn-outline-danger btn-sm"
-                                                data-confirm="Are you sure you want to deactivate user '{{ user.email }}'?"
-                                                title="Deactivate User">
+                                                title="Permanently Remove User"
+                                                onclick="return confirm('Permanently remove user {{ user.email }}? This cannot be undone!')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
-                                {% else %}
-                                    <span class="text-muted">
-                                        <i class="bi bi-dash-circle"></i>
-                                    </span>
-                                {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

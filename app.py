@@ -34,7 +34,7 @@ from email_server.tool_box import get_logger
 from email_server.dkim_manager import DKIMManager
 
 # Import Flask frontend
-from email_frontend.blueprint import email_bp
+from email_server.server_web_ui.routes import email_bp
 
 logger = get_logger()
 
@@ -69,8 +69,8 @@ class SMTPServerApp:
     def create_flask_app(self):
         """Create and configure the Flask application"""
         app = Flask(__name__, 
-                   static_folder='email_frontend/static',
-                   template_folder='email_frontend/templates')
+                   static_folder='email_server/server_web_ui/static',
+                   template_folder='email_server/server_web_ui/templates')
         
         # Flask configuration
         app.config.update({

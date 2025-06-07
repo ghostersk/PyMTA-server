@@ -103,6 +103,7 @@ def generate_spf_record(domain: str, public_ip: str, existing_spf: str = None) -
     spf_parts = ['v=spf1'] + base_mechanisms + ['~all']
     return ' '.join(spf_parts)
 
+# Dashboard and Main Routes
 @email_bp.route('/')
 def dashboard():
     """Main dashboard showing overview of the email server."""
@@ -128,6 +129,7 @@ def dashboard():
     finally:
         session.close()
 
+# Domain Management Routes
 @email_bp.route('/domains')
 def domains_list():
     """List all domains."""
@@ -180,7 +182,7 @@ def add_domain():
 
 @email_bp.route('/domains/<int:domain_id>/delete', methods=['POST'])
 def delete_domain(domain_id: int):
-    """Delete domain."""
+    """Delete domain (soft delete)."""
     session = Session()
     try:
         domain = session.query(Domain).get(domain_id)
@@ -192,17 +194,132 @@ def delete_domain(domain_id: int):
         domain.is_active = False
         session.commit()
         
-        flash(f'Domain {domain_name} deactivated', 'success')
+        flash(f'Domain {domain_name} disabled', 'success')
         return redirect(url_for('email.domains_list'))
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error deleting domain: {e}")
-        flash(f'Error deleting domain: {str(e)}', 'error')
+        logger.error(f"Error disabling domain: {e}")
+        flash(f'Error disabling domain: {str(e)}', 'error')
         return redirect(url_for('email.domains_list'))
     finally:
         session.close()
 
+@email_bp.route('/domains/<int:domain_id>/edit', methods=['GET', 'POST'])
+def edit_domain(domain_id: int):
+    """Edit domain."""
+    session = Session()
+    try:
+        domain = session.query(Domain).get(domain_id)
+        if not domain:
+            flash('Domain not found', 'error')
+            return redirect(url_for('email.domains_list'))
+        
+        if request.method == 'POST':
+            domain_name = request.form.get('domain_name', '').strip().lower()
+            requires_auth = request.form.get('requires_auth') == 'on'
+            
+            if not domain_name:
+                flash('Domain name is required', 'error')
+                return redirect(url_for('email.edit_domain', domain_id=domain_id))
+            
+            # Basic domain validation
+            if '.' not in domain_name or len(domain_name.split('.')) < 2:
+                flash('Invalid domain format', 'error')
+                return redirect(url_for('email.edit_domain', domain_id=domain_id))
+            
+            # Check if domain name already exists (excluding current domain)
+            existing = session.query(Domain).filter(
+                Domain.domain_name == domain_name,
+                Domain.id != domain_id
+            ).first()
+            if existing:
+                flash(f'Domain {domain_name} already exists', 'error')
+                return redirect(url_for('email.edit_domain', domain_id=domain_id))
+            
+            old_name = domain.domain_name
+            domain.domain_name = domain_name
+            domain.requires_auth = requires_auth
+            session.commit()
+            
+            flash(f'Domain updated from "{old_name}" to "{domain_name}"', 'success')
+            return redirect(url_for('email.domains_list'))
+        
+        return render_template('edit_domain.html', domain=domain)
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error editing domain: {e}")
+        flash(f'Error editing domain: {str(e)}', 'error')
+        return redirect(url_for('email.domains_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/domains/<int:domain_id>/toggle', methods=['POST'])
+def toggle_domain(domain_id: int):
+    """Toggle domain active status (Enable/Disable)."""
+    session = Session()
+    try:
+        domain = session.query(Domain).get(domain_id)
+        if not domain:
+            flash('Domain not found', 'error')
+            return redirect(url_for('email.domains_list'))
+        
+        old_status = domain.is_active
+        domain.is_active = not old_status
+        session.commit()
+        
+        status_text = "enabled" if domain.is_active else "disabled"
+        flash(f'Domain {domain.domain_name} has been {status_text}', 'success')
+        return redirect(url_for('email.domains_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error toggling domain status: {e}")
+        flash(f'Error toggling domain status: {str(e)}', 'error')
+        return redirect(url_for('email.domains_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/domains/<int:domain_id>/remove', methods=['POST'])
+def remove_domain(domain_id: int):
+    """Permanently remove domain and all associated data."""
+    session = Session()
+    try:
+        domain = session.query(Domain).get(domain_id)
+        if not domain:
+            flash('Domain not found', 'error')
+            return redirect(url_for('email.domains_list'))
+        
+        domain_name = domain.domain_name
+        
+        # Count associated records
+        user_count = session.query(User).filter_by(domain_id=domain_id).count()
+        ip_count = session.query(WhitelistedIP).filter_by(domain_id=domain_id).count()
+        dkim_count = session.query(DKIMKey).filter_by(domain_id=domain_id).count()
+        
+        # Delete associated records
+        session.query(User).filter_by(domain_id=domain_id).delete()
+        session.query(WhitelistedIP).filter_by(domain_id=domain_id).delete()
+        session.query(DKIMKey).filter_by(domain_id=domain_id).delete()
+        session.query(CustomHeader).filter_by(domain_id=domain_id).delete()
+        
+        # Delete domain
+        session.delete(domain)
+        session.commit()
+        
+        flash(f'Domain {domain_name} and all associated data permanently removed ({user_count} users, {ip_count} IPs, {dkim_count} DKIM keys)', 'success')
+        return redirect(url_for('email.domains_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error removing domain: {e}")
+        flash(f'Error removing domain: {str(e)}', 'error')
+        return redirect(url_for('email.domains_list'))
+    finally:
+        session.close()
+
+# User Management Routes
 @email_bp.route('/users')
 def users_list():
     """List all users."""
@@ -266,7 +383,7 @@ def add_user():
 
 @email_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 def delete_user(user_id: int):
-    """Delete user."""
+    """Disable user (soft delete)."""
     session = Session()
     try:
         user = session.query(User).get(user_id)
@@ -278,17 +395,128 @@ def delete_user(user_id: int):
         user.is_active = False
         session.commit()
         
-        flash(f'User {user_email} deactivated', 'success')
+        flash(f'User {user_email} disabled', 'success')
         return redirect(url_for('email.users_list'))
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error deleting user: {e}")
-        flash(f'Error deleting user: {str(e)}', 'error')
+        logger.error(f"Error disabling user: {e}")
+        flash(f'Error disabling user: {str(e)}', 'error')
         return redirect(url_for('email.users_list'))
     finally:
         session.close()
 
+@email_bp.route('/users/<int:user_id>/enable', methods=['POST'])
+def enable_user(user_id: int):
+    """Enable user."""
+    session = Session()
+    try:
+        user = session.query(User).get(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('email.users_list'))
+        
+        user_email = user.email
+        user.is_active = True
+        session.commit()
+        
+        flash(f'User {user_email} enabled', 'success')
+        return redirect(url_for('email.users_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error enabling user: {e}")
+        flash(f'Error enabling user: {str(e)}', 'error')
+        return redirect(url_for('email.users_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/users/<int:user_id>/remove', methods=['POST'])
+def remove_user(user_id: int):
+    """Permanently remove user."""
+    session = Session()
+    try:
+        user = session.query(User).get(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('email.users_list'))
+        
+        user_email = user.email
+        session.delete(user)
+        session.commit()
+        
+        flash(f'User {user_email} permanently removed', 'success')
+        return redirect(url_for('email.users_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error removing user: {e}")
+        flash(f'Error removing user: {str(e)}', 'error')
+        return redirect(url_for('email.users_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+def edit_user(user_id: int):
+    """Edit user."""
+    session = Session()
+    try:
+        user = session.query(User).get(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('email.users_list'))
+        
+        domains = session.query(Domain).filter_by(is_active=True).order_by(Domain.domain_name).all()
+        
+        if request.method == 'POST':
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '').strip()
+            domain_id = request.form.get('domain_id', type=int)
+            can_send_as_domain = request.form.get('can_send_as_domain') == 'on'
+            
+            if not all([email, domain_id]):
+                flash('Email and domain are required', 'error')
+                return redirect(url_for('email.edit_user', user_id=user_id))
+            
+            # Email validation
+            if '@' not in email or '.' not in email.split('@')[1]:
+                flash('Invalid email format', 'error')
+                return redirect(url_for('email.edit_user', user_id=user_id))
+            
+            # Check if email already exists (excluding current user)
+            existing = session.query(User).filter(
+                User.email == email,
+                User.id != user_id
+            ).first()
+            if existing:
+                flash(f'Email {email} already exists', 'error')
+                return redirect(url_for('email.edit_user', user_id=user_id))
+            
+            # Update user
+            user.email = email
+            user.domain_id = domain_id
+            user.can_send_as_domain = can_send_as_domain
+            
+            # Update password if provided
+            if password:
+                user.password_hash = hash_password(password)
+            
+            session.commit()
+            
+            flash(f'User {email} updated successfully', 'success')
+            return redirect(url_for('email.users_list'))
+        
+        return render_template('edit_user.html', user=user, domains=domains)
+    
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error editing user: {e}")
+        flash(f'Error editing user: {str(e)}', 'error')
+        return redirect(url_for('email.users_list'))
+    finally:
+        session.close()
+
+# IP Management Routes
 @email_bp.route('/ips')
 def ips_list():
     """List all whitelisted IPs."""
@@ -350,7 +578,7 @@ def add_ip():
 
 @email_bp.route('/ips/<int:ip_id>/delete', methods=['POST'])
 def delete_ip(ip_id: int):
-    """Delete whitelisted IP."""
+    """Disable whitelisted IP (soft delete)."""
     session = Session()
     try:
         ip_record = session.query(WhitelistedIP).get(ip_id)
@@ -362,17 +590,123 @@ def delete_ip(ip_id: int):
         ip_record.is_active = False
         session.commit()
         
-        flash(f'IP {ip_address} removed from whitelist', 'success')
+        flash(f'IP {ip_address} disabled', 'success')
         return redirect(url_for('email.ips_list'))
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error deleting IP: {e}")
-        flash(f'Error deleting IP: {str(e)}', 'error')
+        logger.error(f"Error disabling IP: {e}")
+        flash(f'Error disabling IP: {str(e)}', 'error')
         return redirect(url_for('email.ips_list'))
     finally:
         session.close()
 
+@email_bp.route('/ips/<int:ip_id>/enable', methods=['POST'])
+def enable_ip(ip_id: int):
+    """Enable whitelisted IP."""
+    session = Session()
+    try:
+        ip_record = session.query(WhitelistedIP).get(ip_id)
+        if not ip_record:
+            flash('IP record not found', 'error')
+            return redirect(url_for('email.ips_list'))
+        
+        ip_address = ip_record.ip_address
+        ip_record.is_active = True
+        session.commit()
+        
+        flash(f'IP {ip_address} enabled', 'success')
+        return redirect(url_for('email.ips_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error enabling IP: {e}")
+        flash(f'Error enabling IP: {str(e)}', 'error')
+        return redirect(url_for('email.ips_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/ips/<int:ip_id>/remove', methods=['POST'])
+def remove_ip(ip_id: int):
+    """Permanently remove whitelisted IP."""
+    session = Session()
+    try:
+        ip_record = session.query(WhitelistedIP).get(ip_id)
+        if not ip_record:
+            flash('IP record not found', 'error')
+            return redirect(url_for('email.ips_list'))
+        
+        ip_address = ip_record.ip_address
+        session.delete(ip_record)
+        session.commit()
+        
+        flash(f'IP {ip_address} permanently removed', 'success')
+        return redirect(url_for('email.ips_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error removing IP: {e}")
+        flash(f'Error removing IP: {str(e)}', 'error')
+        return redirect(url_for('email.ips_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/ips/<int:ip_id>/edit', methods=['GET', 'POST'])
+def edit_ip(ip_id: int):
+    """Edit whitelisted IP."""
+    session = Session()
+    try:
+        ip_record = session.query(WhitelistedIP).get(ip_id)
+        if not ip_record:
+            flash('IP record not found', 'error')
+            return redirect(url_for('email.ips_list'))
+        
+        domains = session.query(Domain).filter_by(is_active=True).order_by(Domain.domain_name).all()
+        
+        if request.method == 'POST':
+            ip_address = request.form.get('ip_address', '').strip()
+            domain_id = request.form.get('domain_id', type=int)
+            
+            if not all([ip_address, domain_id]):
+                flash('All fields are required', 'error')
+                return redirect(url_for('email.edit_ip', ip_id=ip_id))
+            
+            # Basic IP validation
+            try:
+                socket.inet_aton(ip_address)
+            except socket.error:
+                flash('Invalid IP address format', 'error')
+                return redirect(url_for('email.edit_ip', ip_id=ip_id))
+            
+            # Check if IP already exists for this domain (excluding current record)
+            existing = session.query(WhitelistedIP).filter(
+                WhitelistedIP.ip_address == ip_address,
+                WhitelistedIP.domain_id == domain_id,
+                WhitelistedIP.id != ip_id
+            ).first()
+            if existing:
+                flash(f'IP {ip_address} already whitelisted for this domain', 'error')
+                return redirect(url_for('email.edit_ip', ip_id=ip_id))
+            
+            # Update IP record
+            ip_record.ip_address = ip_address
+            ip_record.domain_id = domain_id
+            session.commit()
+            
+            flash(f'IP whitelist record updated', 'success')
+            return redirect(url_for('email.ips_list'))
+        
+        return render_template('edit_ip.html', ip_record=ip_record, domains=domains)
+    
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error editing IP: {e}")
+        flash(f'Error editing IP: {str(e)}', 'error')
+        return redirect(url_for('email.ips_list'))
+    finally:
+        session.close()
+
+# DKIM Management Routes
 @email_bp.route('/dkim')
 def dkim_list():
     """List all DKIM keys and DNS records."""
@@ -449,20 +783,9 @@ def regenerate_dkim(domain_id: int):
     finally:
         session.close()
 
-@email_bp.route('/dkim/<int:dkim_id>/update_selector', methods=['POST'])
-def update_dkim_selector(dkim_id: int):
-    """Update DKIM selector name."""
-    new_selector = request.form.get('selector', '').strip()
-    
-    if not new_selector:
-        flash('Selector name is required', 'error')
-        return redirect(url_for('email.dkim_list'))
-    
-    # Validate selector (alphanumeric only)
-    if not re.match(r'^[a-zA-Z0-9]+$', new_selector):
-        flash('Selector must contain only letters and numbers', 'error')
-        return redirect(url_for('email.dkim_list'))
-    
+@email_bp.route('/dkim/<int:dkim_id>/edit', methods=['GET', 'POST'])
+def edit_dkim(dkim_id: int):
+    """Edit DKIM key selector."""
     session = Session()
     try:
         dkim_key = session.query(DKIMKey).get(dkim_id)
@@ -470,21 +793,103 @@ def update_dkim_selector(dkim_id: int):
             flash('DKIM key not found', 'error')
             return redirect(url_for('email.dkim_list'))
         
-        old_selector = dkim_key.selector
-        dkim_key.selector = new_selector
-        session.commit()
+        domain = session.query(Domain).get(dkim_key.domain_id)
         
-        flash(f'DKIM selector updated from {old_selector} to {new_selector}', 'success')
-        return redirect(url_for('email.dkim_list'))
+        if request.method == 'POST':
+            new_selector = request.form.get('selector', '').strip()
+            
+            if not new_selector:
+                flash('Selector name is required', 'error')
+                return render_template('edit_dkim.html', dkim_key=dkim_key, domain=domain)
+            
+            # Validate selector (alphanumeric only)
+            if not re.match(r'^[a-zA-Z0-9_-]+$', new_selector):
+                flash('Selector must contain only letters, numbers, hyphens, and underscores', 'error')
+                return render_template('edit_dkim.html', dkim_key=dkim_key, domain=domain)
+            
+            # Check for duplicate selector in same domain
+            existing = session.query(DKIMKey).filter_by(
+                domain_id=dkim_key.domain_id, 
+                selector=new_selector,
+                is_active=True
+            ).filter(DKIMKey.id != dkim_id).first()
+            
+            if existing:
+                flash(f'A DKIM key with selector "{new_selector}" already exists for this domain', 'error')
+                return render_template('edit_dkim.html', dkim_key=dkim_key, domain=domain)
+            
+            old_selector = dkim_key.selector
+            dkim_key.selector = new_selector
+            session.commit()
+            
+            flash(f'DKIM selector updated from "{old_selector}" to "{new_selector}" for {domain.domain_name}', 'success')
+            return redirect(url_for('email.dkim_list'))
+        
+        return render_template('edit_dkim.html', dkim_key=dkim_key, domain=domain)
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error updating DKIM selector: {e}")
-        flash(f'Error updating DKIM selector: {str(e)}', 'error')
+        logger.error(f"Error editing DKIM: {e}")
+        flash(f'Error editing DKIM key: {str(e)}', 'error')
         return redirect(url_for('email.dkim_list'))
     finally:
         session.close()
 
+@email_bp.route('/dkim/<int:dkim_id>/toggle', methods=['POST'])
+def toggle_dkim(dkim_id: int):
+    """Toggle DKIM key active status (Enable/Disable)."""
+    session = Session()
+    try:
+        dkim_key = session.query(DKIMKey).get(dkim_id)
+        if not dkim_key:
+            flash('DKIM key not found', 'error')
+            return redirect(url_for('email.dkim_list'))
+        
+        domain = session.query(Domain).get(dkim_key.domain_id)
+        old_status = dkim_key.is_active
+        dkim_key.is_active = not old_status
+        session.commit()
+        
+        status_text = "enabled" if dkim_key.is_active else "disabled"
+        flash(f'DKIM key for {domain.domain_name} (selector: {dkim_key.selector}) has been {status_text}', 'success')
+        return redirect(url_for('email.dkim_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error toggling DKIM status: {e}")
+        flash(f'Error toggling DKIM status: {str(e)}', 'error')
+        return redirect(url_for('email.dkim_list'))
+    finally:
+        session.close()
+
+@email_bp.route('/dkim/<int:dkim_id>/remove', methods=['POST'])
+def remove_dkim(dkim_id: int):
+    """Permanently remove DKIM key."""
+    session = Session()
+    try:
+        dkim_key = session.query(DKIMKey).get(dkim_id)
+        if not dkim_key:
+            flash('DKIM key not found', 'error')
+            return redirect(url_for('email.dkim_list'))
+        
+        domain = session.query(Domain).get(dkim_key.domain_id)
+        selector = dkim_key.selector
+        
+        session.delete(dkim_key)
+        session.commit()
+        
+        flash(f'DKIM key for {domain.domain_name} (selector: {selector}) has been permanently removed', 'success')
+        return redirect(url_for('email.dkim_list'))
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error removing DKIM key: {e}")
+        flash(f'Error removing DKIM key: {str(e)}', 'error')
+        return redirect(url_for('email.dkim_list'))
+    finally:
+        session.close()
+
+# AJAX DNS Check Routes
 @email_bp.route('/dkim/check_dns', methods=['POST'])
 def check_dkim_dns():
     """Check DKIM DNS record via AJAX."""
@@ -527,6 +932,7 @@ def check_spf_dns():
     
     return jsonify(result)
 
+# Settings Routes
 @email_bp.route('/settings')
 def settings():
     """Display and edit server settings."""
@@ -560,6 +966,7 @@ def update_settings():
         flash(f'Error updating settings: {str(e)}', 'error')
         return redirect(url_for('email.settings'))
 
+# Logs Routes
 @email_bp.route('/logs')
 def logs():
     """Display email and authentication logs."""
@@ -629,7 +1036,6 @@ def logs():
 @email_bp.errorhandler(404)
 def not_found(error):
     """Handle 404 errors."""
-    from datetime import datetime
     return render_template('error.html', 
                          error_code=404,
                          error_message='Page not found',
@@ -638,7 +1044,6 @@ def not_found(error):
 @email_bp.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors."""
-    from datetime import datetime
     logger.error(f"Internal error: {error}")
     return render_template('error.html',
                          error_code=500,

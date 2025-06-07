@@ -79,21 +79,41 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ url_for('email.dkim_list') }}#domain-{{ domain.id }}" 
-                                       class="btn btn-outline-info"
-                                       title="Manage DKIM">
-                                        <i class="bi bi-key"></i>
+                                    <!-- Edit Button -->
+                                    <a href="{{ url_for('email.edit_domain', domain_id=domain.id) }}" 
+                                       class="btn btn-outline-primary"
+                                       title="Edit Domain">
+                                        <i class="bi bi-pencil"></i>
                                     </a>
-                                    {% if domain.is_active %}
-                                        <form method="post" action="{{ url_for('email.delete_domain', domain_id=domain.id) }}" class="d-inline">
+                                    
+                                    <!-- Toggle Enable/Disable Button -->
+                                    <form method="post" action="{{ url_for('email.toggle_domain', domain_id=domain.id) }}" class="d-inline">
+                                        {% if domain.is_active %}
                                             <button type="submit" 
-                                                    class="btn btn-outline-danger"
-                                                    data-confirm="Are you sure you want to deactivate domain '{{ domain.domain_name }}'?"
-                                                    title="Deactivate Domain">
-                                                <i class="bi bi-trash"></i>
+                                                    class="btn btn-outline-warning"
+                                                    onclick="return confirm('Are you sure you want to disable domain \'{{ domain.domain_name }}\'?')"
+                                                    title="Disable Domain">
+                                                <i class="bi bi-pause-circle"></i>
                                             </button>
-                                        </form>
-                                    {% endif %}
+                                        {% else %}
+                                            <button type="submit" 
+                                                    class="btn btn-outline-success"
+                                                    onclick="return confirm('Are you sure you want to enable domain \'{{ domain.domain_name }}\'?')"
+                                                    title="Enable Domain">
+                                                <i class="bi bi-play-circle"></i>
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                    
+                                    <!-- Remove Button -->
+                                    <form method="post" action="{{ url_for('email.remove_domain', domain_id=domain.id) }}" class="d-inline">
+                                        <button type="submit" 
+                                                class="btn btn-outline-danger"
+                                                onclick="return confirm('WARNING: This will permanently delete domain \'{{ domain.domain_name }}\' and ALL associated data (users, IPs, DKIM keys). This action cannot be undone. Are you sure you want to continue?')"
+                                                title="Permanently Remove Domain">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>

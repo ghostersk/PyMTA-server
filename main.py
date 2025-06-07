@@ -1,3 +1,6 @@
+"""
+    Starts the email server, no web UI!
+"""
 from email_server.server_runner import start_server
 from email_server.tool_box import get_logger
 import asyncio
