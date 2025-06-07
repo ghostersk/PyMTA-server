@@ -9,7 +9,7 @@ from email_server.tool_box import get_logger
 
 # Import our modules
 from email_server.models import create_tables
-from email_server.smtp_handler import EnhancedCustomSMTPHandler, PlainController
+from email_server.smtp_handler import EnhancedCustomSMTPHandler, PlainController, TLSController
 from email_server.tls_utils import generate_self_signed_cert, create_ssl_context
 from email_server.dkim_manager import DKIMManager
 from aiosmtpd.controller import Controller
@@ -18,7 +18,7 @@ from aiosmtpd.smtp import SMTP as AIOSMTP
 settings = load_settings()
 SMTP_PORT = int(settings['Server']['SMTP_PORT'])
 SMTP_TLS_PORT = int(settings['Server']['SMTP_TLS_PORT'])
-HOSTNAME = settings['Server']['HOSTNAME']
+HOSTNAME = settings['Server'].get('helo_hostname', settings['Server'].get('hostname', 'localhost'))
 LOG_LEVEL = settings['Logging']['LOG_LEVEL']
 BIND_IP = settings['Server']['BIND_IP']
 
@@ -94,37 +94,25 @@ async def start_server():
         logger.error("Failed to create SSL context")
         return
     
+    logger.debug(f"SSL context created: {ssl_context}")
+    logger.debug(f"SSL context type: {type(ssl_context)}")
+    
     # Start plain SMTP server (with IP whitelist fallback)
     handler_plain = EnhancedCustomSMTPHandler()
     controller_plain = PlainController(
         handler_plain,
-        hostname=BIND_IP,
-        server_hostname="TestEnvironment",
+        hostname=HOSTNAME,  # Use proper hostname for HELO identification
         port=SMTP_PORT
     )
     controller_plain.start()
     logger.debug(f'Starting plain SMTP server on {HOSTNAME}:{SMTP_PORT}...')
     
-    # Start TLS SMTP server using closure pattern like the original
+    # Start TLS SMTP server using the updated TLSController
     handler_tls = EnhancedCustomSMTPHandler()
-    
-    # Define TLS controller class with ssl_context in closure (like original)
-    class TLSController(Controller):
-        def factory(self):
-            return AIOSMTP(
-                self.handler,
-                tls_context=ssl_context,  # Use ssl_context from closure
-                require_starttls=False,  # Don't force STARTTLS, but make it available
-                auth_require_tls=True,   # If auth is used, require TLS
-                authenticator=self.handler.combined_authenticator,
-                decode_data=True,
-                hostname=self.hostname
-            )
-    
     controller_tls = TLSController(
         handler_tls,
-        hostname=BIND_IP,
-        server_hostname="TestEnvironment",
+        ssl_context=ssl_context,
+        hostname=HOSTNAME,  # Use proper hostname for HELO identification  
         port=SMTP_TLS_PORT
     )
     controller_tls.start()

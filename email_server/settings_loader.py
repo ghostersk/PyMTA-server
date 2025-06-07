@@ -13,7 +13,8 @@ DEFAULTS = {
     'Server': {
         'SMTP_PORT': '4025',
         'SMTP_TLS_PORT': '40587',
-        'HOSTNAME': 'localhost',
+        'HOSTNAME': 'mail.example.com',
+        'helo_hostname': 'mail.example.com',
         'BIND_IP': '0.0.0.0',
     },
     'Database': {
