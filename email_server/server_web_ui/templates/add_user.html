@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Add User - Email Server{% endblock %}
+{% block title %}Add Sender - Email Server{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -10,7 +10,7 @@
                 <div class="card-header">
                     <h4 class="mb-0">
                         <i class="bi bi-person-plus me-2"></i>
-                        Add New User
+                        Add New Sender
                     </h4>
                 </div>
                 <div class="card-body">
@@ -50,7 +50,7 @@
                                 {% endfor %}
                             </select>
                             <div class="form-text">
-                                The domain this user belongs to
+                                The domain this sender belongs to
                             </div>
                         </div>
                         
@@ -61,11 +61,11 @@
                                        id="can_send_as_domain" 
                                        name="can_send_as_domain">
                                 <label class="form-check-label" for="can_send_as_domain">
-                                    <strong>Domain Administrator</strong>
+                                    <strong>Domain Sender</strong>
                                 </label>
                                 <div class="form-text">
-                                    If checked, user can send emails as any address in their domain.
-                                    Otherwise, user can only send as their own email address.
+                                    If checked, sender can send emails as any address in their domain.
+                                    Otherwise, sender can only send as their own email address.
                                 </div>
                             </div>
                         </div>
@@ -76,19 +76,19 @@
                                 Permission Levels
                             </h6>
                             <ul class="mb-0">
-                                <li><strong>Regular User:</strong> Can only send emails from their own email address</li>
-                                <li><strong>Domain Admin:</strong> Can send emails from any address in their domain (e.g., noreply@domain.com, support@domain.com)</li>
+                                <li><strong>Regular Sender:</strong> Can only send emails from their own email address</li>
+                                <li><strong>Domain Sender:</strong> Can send emails from any address in their domain (e.g., noreply@domain.com, support@domain.com)</li>
                             </ul>
                         </div>
                         
                         <div class="d-flex justify-content-between">
                             <a href="{{ url_for('email.users_list') }}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left me-2"></i>
-                                Back to Users
+                                Back to Senders
                             </a>
                             <button type="submit" class="btn btn-success">
                                 <i class="bi bi-person-plus me-2"></i>
-                                Add User
+                                Add Sender
                             </button>
                         </div>
                     </form>
@@ -98,35 +98,6 @@
     </div>
 </div>
 
-<!-- Domain information sidebar -->
-<div class="row mt-4">
-    {% if domains %}
-    <div class="col-md-6 mx-auto">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Available Domains
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    {% for domain in domains %}
-                    <div class="col-md-6 mb-2">
-                        <div class="border rounded p-2">
-                            <div class="fw-bold">{{ domain.domain_name }}</div>
-                            <small class="text-muted">
-                                Created: {{ domain.created_at.strftime('%Y-%m-%d') }}
-                            </small>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
 {% endblock %}
 
 {% block extra_js %}

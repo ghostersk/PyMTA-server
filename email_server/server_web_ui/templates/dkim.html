@@ -190,12 +190,12 @@
                     {% if item.existing_spf %}
                     <div class="mb-2">
                         <strong>Current SPF:</strong>
-                        <div class="dns-record text-info">{{ item.existing_spf }}</div>
+                        <div class="dns-record">{{ item.existing_spf }}</div>
                     </div>
                     {% endif %}
                     <div class="mb-2">
                         <strong>Recommended SPF:</strong>
-                        <div class="dns-record text-success">{{ item.recommended_spf }}</div>
+                        <div class="dns-record">{{ item.recommended_spf }}</div>
                     </div>
                     <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('{{ item.recommended_spf }}')">
                         <i class="bi bi-clipboard me-1"></i>

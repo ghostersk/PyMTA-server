@@ -3,6 +3,8 @@ Python Email server for sending emails directly to recipient ( no email Relay)
 ```bash
 # Testing
 .venv/bin/python app.py --web-only --debug
+# Production:
+python app.py --smtp-only & gunicorn -w 4 -b 0.0.0.0:5000 app:flask_app
 ```
 ## Plan:
 - make full python MTA server with front end to allow sending any email

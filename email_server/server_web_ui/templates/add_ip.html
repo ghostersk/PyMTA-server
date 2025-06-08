@@ -4,6 +4,30 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Current IP Detection -->
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-geo-alt me-2"></i>
+                    Your Current IP
+                </h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="fw-bold font-monospace fs-5 mb-2" id="current-ip">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Detecting...
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="useCurrentIP()">
+                    <i class="bi bi-arrow-up me-1"></i>
+                    Use This IP
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
     <div class="row">
         <div class="col-md-8 mx-auto">
             <div class="card">
@@ -73,113 +97,7 @@
     </div>
 </div>
 
-<!-- Current IP Detection and Available Domains -->
-<div class="row mt-4">
-    <div class="col-md-4 mx-auto">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-geo-alt me-2"></i>
-                    Your Current IP
-                </h6>
-            </div>
-            <div class="card-body text-center">
-                <div class="fw-bold font-monospace fs-5 mb-2" id="current-ip">
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                    Detecting...
-                </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" onclick="useCurrentIP()">
-                    <i class="bi bi-arrow-up me-1"></i>
-                    Use This IP
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    {% if domains %}
-    <div class="col-md-4 mx-auto">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-server me-2"></i>
-                    Available Domains
-                </h6>
-            </div>
-            <div class="card-body">
-                {% for domain in domains %}
-                <div class="mb-2">
-                    <div class="fw-bold">{{ domain.domain_name }}</div>
-                    <small class="text-muted">
-                        Created: {{ domain.created_at.strftime('%Y-%m-%d') }}
-                    </small>
-                </div>
-                {% if not loop.last %}<hr class="my-2">{% endif %}
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
 
-<!-- Example Use Cases -->
-<div class="row mt-4">
-    <div class="col-md-8 mx-auto">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-lightbulb me-2"></i>
-                    Common Use Cases
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-primary">
-                            <i class="bi bi-server me-1"></i>
-                            Application Servers
-                        </h6>
-                        <p class="text-muted small">
-                            Web applications that need to send transactional emails 
-                            (password resets, notifications, etc.)
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-success">
-                            <i class="bi bi-clock me-1"></i>
-                            Scheduled Tasks
-                        </h6>
-                        <p class="text-muted small">
-                            Cron jobs or scheduled scripts that send automated 
-                            reports or alerts
-                        </p>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-warning">
-                            <i class="bi bi-monitor me-1"></i>
-                            Monitoring Systems
-                        </h6>
-                        <p class="text-muted small">
-                            Monitoring tools that send alerts and status updates 
-                            to administrators
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-info">
-                            <i class="bi bi-cloud me-1"></i>
-                            Cloud Services
-                        </h6>
-                        <p class="text-muted small">
-                            Cloud-based applications or services that need to 
-                            send emails on behalf of your domain
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -187,14 +105,21 @@
     // Detect current IP address
     async function detectCurrentIP() {
         try {
-            const response = await fetch('https://api.ipify.org?format=json');
+            const response = await fetch('https://ifconfig.me/all.json');
             const data = await response.json();
             document.getElementById('current-ip').innerHTML = 
-                `<span class="text-primary">${data.ip}</span>`;
-        } catch (error) {
-            document.getElementById('current-ip').innerHTML = 
+                `<span class="text-primary">${data.ip_addr}</span>`;
+        } catch (er) {
+            try {
+                const response = await fetch('https://httpbin.org/ip');
+                const data = await response.json();
+                document.getElementById('current-ip').innerHTML = 
+                    `<span class="text-primary">${data.origin}</span>`;
+            } catch (error) {
+                document.getElementById('current-ip').innerHTML = 
                 '<span class="text-muted">Unable to detect</span>';
         }
+    }
     }
     
     function useCurrentIP() {

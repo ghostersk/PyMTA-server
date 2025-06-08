@@ -25,6 +25,10 @@
             Server Settings
         </h2>
         <div class="btn-group">
+            <button type="button" class="btn btn-outline-danger me-2" onclick="restartSmtpServer()" id="restart-smtp-btn">
+                <i class="bi bi-arrow-repeat me-2"></i>
+                Restart SMTP Server
+            </button>
             <button type="button" class="btn btn-outline-warning" onclick="resetToDefaults()">
                 <i class="bi bi-arrow-clockwise me-2"></i>
                 Reset to Defaults
@@ -351,5 +355,28 @@
             return;
         }
     });
+
+    function restartSmtpServer() {
+        showConfirmation("Are you sure you want to restart the SMTP server?", "Restart SMTP Server", "Restart", "btn-danger").then(confirmed => {
+            if (!confirmed) return;
+            const btn = document.getElementById('restart-smtp-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Restarting...';
+            fetch('/api/server/restart', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast(data.message || 'SMTP server restarted.', 'success');
+                    } else {
+                        showToast(data.message || 'Failed to restart SMTP server.', 'danger');
+                    }
+                })
+                .catch(() => showToast('Failed to restart SMTP server.', 'danger'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Restart SMTP Server';
+                });
+        });
+    }
 </script>
 {% endblock %}

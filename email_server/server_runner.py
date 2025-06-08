@@ -32,7 +32,7 @@ except RuntimeError:
     # No running loop, set debug when we create one
     pass
 
-async def start_server():
+async def start_server(shutdown_event=None):
     """Main server function."""
     logger.debug("Starting SMTP Server with DKIM support...")
     
@@ -121,9 +121,13 @@ async def start_server():
     logger.debug('Management available via web interface at: http://localhost:5000/email')
     
     try:
-        await asyncio.Event().wait()
+        if shutdown_event is not None:
+            await shutdown_event.wait()
+        else:
+            await asyncio.Event().wait()
     except KeyboardInterrupt:
         logger.debug('Shutting down SMTP servers...')
+    finally:
         controller_plain.stop()
         controller_tls.stop()
         logger.debug('SMTP servers stopped.')

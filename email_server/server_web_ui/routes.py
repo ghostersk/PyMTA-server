@@ -33,7 +33,7 @@ from email_server.models import (
     hash_password, create_tables, get_user_by_email, get_domain_by_name, get_whitelisted_ip
 )
 from email_server.dkim_manager import DKIMManager
-from email_server.settings_loader import load_settings, generate_settings_ini, SETTINGS_PATH
+from email_server.settings_loader import load_settings, SETTINGS_PATH
 from email_server.tool_box import get_logger
 
 logger = get_logger()
@@ -42,7 +42,7 @@ logger = get_logger()
 email_bp = Blueprint('email', __name__, 
                     template_folder='templates',
                     static_folder='static',
-                    url_prefix='/email')
+                    url_prefix='/pymta-manager')
 
 def get_public_ip() -> str:
     """Get the public IP address of the server."""
@@ -102,29 +102,33 @@ def check_dns_record(domain: str, record_type: str, expected_value: str = None) 
         return {'success': False, 'message': f'DNS lookup error: {str(e)}'}
 
 def generate_spf_record(domain: str, public_ip: str, existing_spf: str = None) -> str:
-    """Generate SPF record including the current server IP."""
-    base_mechanisms = []
-    
+    """Generate or update SPF record to include the current server IP."""
+    if not public_ip or public_ip == 'unknown':
+        return f'"{existing_spf or "v=spf1 ~all"}"'
+
+    our_ip = f"ip4:{public_ip}"
+
     if existing_spf:
-        # Parse existing SPF record
         spf_clean = existing_spf.replace('"', '').strip()
-        if spf_clean.startswith('v=spf1'):
-            parts = spf_clean.split()
-            base_mechanisms = [part for part in parts[1:] if not part.startswith('ip4:') and part != 'all' and part != '-all' and part != '~all']
-    
-    # Add our server IP if it's not unknown
-    if public_ip and public_ip != 'unknown':
-        our_ip = f"ip4:{public_ip}"
-        if our_ip not in base_mechanisms:
-            base_mechanisms.append(our_ip)
-    
-    # If no IP available, just use existing mechanisms
-    if not base_mechanisms and public_ip == 'unknown':
-        return existing_spf or 'v=spf1 ~all'
-    
-    # Construct SPF record
-    spf_parts = ['v=spf1'] + base_mechanisms + ['~all']
-    return ' '.join(spf_parts)
+        if not spf_clean.startswith('v=spf1'):
+            spf_clean = f"v=spf1 {spf_clean}"
+
+        parts = spf_clean.split()
+        if our_ip in parts:
+            return f'Current SPF records includes already server ip {public_ip}'
+
+        # Find position of the final all mechanism (if present)
+        all_mechanism_index = next((i for i, part in enumerate(parts) if part in ['-all', '~all', '?all', 'all']), None)
+        
+        if all_mechanism_index is not None:
+            new_parts = parts[:all_mechanism_index] + [our_ip] + parts[all_mechanism_index:]
+        else:
+            new_parts = parts + [our_ip, '~all']
+        
+        return f'"{" ".join(new_parts)}"'
+    else:
+        # No existing SPF, create a new one
+        return f'"v=spf1 {our_ip} ~all"'
 
 # Dashboard and Main Routes
 @email_bp.route('/')

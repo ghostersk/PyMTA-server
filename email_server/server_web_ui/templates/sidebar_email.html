@@ -26,7 +26,7 @@
                 <li class="nav-item mb-2">
                     <h6 class="text-muted text-uppercase small mb-2 mt-3">
                         <i class="bi bi-globe me-1"></i>
-                        Domain Management
+                        Email Server Management
                     </h6>
                 </li>
                 
@@ -38,20 +38,12 @@
                         <span class="badge bg-secondary ms-auto">{{ domain_count if domain_count is defined else '' }}</span>
                     </a>
                 </li>
-                
-                <!-- Authentication Section -->
-                <li class="nav-item mb-2">
-                    <h6 class="text-muted text-uppercase small mb-2 mt-3">
-                        <i class="bi bi-shield-lock me-1"></i>
-                        Authentication
-                    </h6>
-                </li>
-                
+
                 <li class="nav-item mb-1">
                     <a href="{{ url_for('email.users_list') }}" 
                        class="nav-link text-white {{ 'active' if request.endpoint in ['email.users_list', 'email.add_user'] else '' }}">
                         <i class="bi bi-people me-2"></i>
-                        Users
+                        Allowed Senders
                         <span class="badge bg-secondary ms-auto">{{ user_count if user_count is defined else '' }}</span>
                     </a>
                 </li>
@@ -65,14 +57,6 @@
                     </a>
                 </li>
                 
-                <!-- DKIM Section -->
-                <li class="nav-item mb-2">
-                    <h6 class="text-muted text-uppercase small mb-2 mt-3">
-                        <i class="bi bi-key me-1"></i>
-                        Email Security
-                    </h6>
-                </li>
-                
                 <li class="nav-item mb-1">
                     <a href="{{ url_for('email.dkim_list') }}" 
                        class="nav-link text-white {{ 'active' if request.endpoint == 'email.dkim_list' else '' }}">
@@ -81,7 +65,24 @@
                         <span class="badge bg-secondary ms-auto">{{ dkim_count if dkim_count is defined else '' }}</span>
                     </a>
                 </li>
+
+                <li class="nav-item mb-1">
+                    <a href="{{ url_for('email.logs') }}" 
+                       class="nav-link text-white {{ 'active' if request.endpoint == 'email.logs' else '' }}">
+                        <i class="bi bi-journal-text me-2"></i>
+                        Emails Log
+                    </a>
+                </li>
+
+                <!-- Authentication Section -->
+                <li class="nav-item mb-2">
+                    <h6 class="text-muted text-uppercase small mb-2 mt-3">
+                        <i class="bi bi-shield-lock me-1"></i>
+                        Authentication
+                    </h6>
+                </li>
                 
+
                 <!-- Configuration Section -->
                 <li class="nav-item mb-2">
                     <h6 class="text-muted text-uppercase small mb-2 mt-3">

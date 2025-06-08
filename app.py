@@ -20,9 +20,11 @@ import threading
 import signal
 import argparse
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, jsonify
+from zoneinfo import ZoneInfo
+from flask import Flask, render_template, redirect, url_for, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+import subprocess
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -49,23 +51,7 @@ class SMTPServerApp:
         self.smtp_task = None
         self.loop = None
         self.shutdown_requested = False
-        
-        # Setup signal handlers
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
-    
-    def _signal_handler(self, signum, frame):
-        """Handle shutdown signals gracefully"""
-        logger.info(f"Received signal {signum}, initiating shutdown...")
-        self.shutdown_requested = True
-        if self.loop and self.loop.is_running():
-            self.loop.call_soon_threadsafe(self._stop_smtp_server)
-    
-    def _stop_smtp_server(self):
-        """Stop the SMTP server"""
-        if self.smtp_task and not self.smtp_task.done():
-            self.smtp_task.cancel()
-            logger.info("SMTP server stopped")
+        self.shutdown_event = None
     
     def _get_absolute_database_url(self):
         """Convert relative database URL to absolute path for Flask-SQLAlchemy"""
@@ -129,7 +115,7 @@ class SMTPServerApp:
             """Health check endpoint"""
             return jsonify({
                 'status': 'healthy',
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(ZoneInfo('Europe/London')).isoformat(),
                 'services': {
                     'smtp_server': 'running' if self.smtp_task and not self.smtp_task.done() else 'stopped',
                     'web_frontend': 'running'
@@ -167,17 +153,23 @@ class SMTPServerApp:
         
         @app.route('/api/server/restart', methods=['POST'])
         def restart_server():
-            """Restart the SMTP server (API endpoint)"""
+            """Restart the SMTP server (API endpoint) via systemd."""
             try:
-                if self.smtp_task and not self.smtp_task.done():
-                    self._stop_smtp_server()
-                
-                # Start SMTP server in a new task
-                if self.loop:
-                    self.smtp_task = asyncio.create_task(start_server())
-                    return jsonify({'status': 'success', 'message': 'SMTP server restarted'})
+                # Only allow from localhost for security
+                if request.remote_addr not in ('127.0.0.1', '::1'):
+                    return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+
+                # Restart the systemd service for SMTP (update service name as needed)
+                result = subprocess.run(
+                    ['systemctl', '--user', 'restart', 'pymta-smtp.service'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                if result.returncode == 0:
+                    return jsonify({'status': 'success', 'message': 'SMTP server restart requested.'})
                 else:
-                    return jsonify({'status': 'error', 'message': 'Event loop not available'}), 500
+                    return jsonify({'status': 'error', 'message': f'Failed to restart: {result.stderr}'}), 500
             except Exception as e:
                 logger.error(f"Error restarting server: {e}")
                 return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -227,8 +219,6 @@ class SMTPServerApp:
                 # Add sample domains
                 sample_domains = [
                     'example.com',
-                    'testdomain.org',
-                    'mydomain.net'
                 ]
                 
                 for domain_name in sample_domains:
@@ -247,9 +237,7 @@ class SMTPServerApp:
                 
                 # Add sample users
                 sample_users = [
-                    ('admin@example.com', 'example.com', 'admin123', True),
-                    ('user@example.com', 'example.com', 'user123', False),
-                    ('test@testdomain.org', 'testdomain.org', 'test123', False)
+                    ('admin@example.com', 'example.com', 'admin123', False),
                 ]
                 
                 for email, domain_name, password, can_send_as_domain in sample_users:
@@ -269,8 +257,6 @@ class SMTPServerApp:
                 # Add sample whitelisted IPs
                 sample_ips = [
                     ('127.0.0.1', 'example.com'),
-                    ('192.168.1.0/24', 'example.com'),
-                    ('10.0.0.0/8', 'testdomain.org')
                 ]
                 
                 for ip, domain_name in sample_ips:
@@ -301,31 +287,49 @@ class SMTPServerApp:
         """Start the SMTP server in async context"""
         try:
             logger.info("Starting SMTP server...")
-            await start_server()
+            await start_server(self.shutdown_event)
         except Exception as e:
             logger.error(f"SMTP server error: {e}")
             if not self.shutdown_requested:
                 raise
     
     def run_smtp_server(self):
-        """Run SMTP server in a separate thread"""
         try:
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
-            
+            self.shutdown_event = asyncio.Event()
+
+            # Only register signal handlers if in the main thread
+            if threading.current_thread() is threading.main_thread():
+                for sig in (signal.SIGINT, signal.SIGTERM):
+                    try:
+                        self.loop.add_signal_handler(sig, self.shutdown_event.set)
+                    except NotImplementedError:
+                        pass  # Not available on Windows
+
             self.smtp_task = self.loop.create_task(self.start_smtp_server())
             self.loop.run_until_complete(self.smtp_task)
-        except asyncio.CancelledError:
-            logger.info("SMTP server task was cancelled")
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            logger.info("SMTP server task was cancelled or interrupted")
         except Exception as e:
             if not self.shutdown_requested:
                 logger.error(f"SMTP server thread error: {e}")
         finally:
+            if self.loop and self.loop.is_running():
+                self.loop.stop()
             if self.loop:
                 self.loop.close()
+            if self.shutdown_requested:
+                os._exit(0)
     
     def run(self, smtp_only=False, web_only=False, debug=False, host='127.0.0.1', port=5000):
         """Run the unified application"""
+        # If running under Gunicorn, do not start Flask dev server
+        if 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '').lower():
+            logger.info("Running under Gunicorn. Flask app will be served by Gunicorn WSGI server.")
+            app = self.create_flask_app()
+            return app
+        
         if web_only:
             # Run only Flask web frontend
             logger.info("Starting web frontend only...")
@@ -369,8 +373,6 @@ class SMTPServerApp:
             logger.info("Application interrupted by user")
         finally:
             self.shutdown_requested = True
-            if self.loop:
-                self.loop.call_soon_threadsafe(self._stop_smtp_server)
 
 
 def main():
@@ -393,7 +395,7 @@ def main():
         # Initialize sample data if requested
         if args.init_data:
             logger.info("Initializing sample data...")
-            app.init_sample_data()
+            # app.init_sample_data() # For testing uncomment, adds sample domain
             logger.info("Sample data initialization complete")
             return
         
@@ -417,14 +419,8 @@ Services:
   • SMTP Server: {'Starting...' if not args.web_only else 'Disabled'}
   • Web Frontend: {'Starting...' if not args.smtp_only else 'Disabled'}
 
-Available web routes:
-  • /                     → Dashboard
-  • /email/domains        → Domain management
-  • /email/users          → User management
-  • /email/ips            → IP whitelist management
-  • /email/dkim           → DKIM management
-  • /email/settings       → Server settings
-  • /email/logs           → Server logs
+Available app web test routes:
+
   • /health               → Health check
   • /api/server/status    → Server status API
 
@@ -451,15 +447,9 @@ Press Ctrl+C to stop the server
 
 
 # For Flask CLI: expose a create_app() factory at module level
-smtp_server_app_instance = SMTPServerApp()
+flask_app = SMTPServerApp().create_flask_app()
 
-def create_app():
-    """Flask application factory for CLI and Flask-Migrate support.
 
-    Returns:
-        Flask: The Flask application instance.
-    """
-    return smtp_server_app_instance.create_flask_app()
 
 if __name__ == '__main__':
     main()
