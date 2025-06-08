@@ -75,7 +75,7 @@
                                                 
                                                 <!-- Enable/Disable Button -->
                                                 {% if ip.is_active %}
-                                                    <form method="post" action="{{ url_for('email.delete_ip', ip_id=ip.id) }}" class="d-inline">
+                                                    <form method="post" action="{{ url_for('email.disable_ip', ip_id=ip.id) }}" class="d-inline">
                                                         <button type="submit" 
                                                                 class="btn btn-outline-warning btn-sm"
                                                                 title="Disable IP"

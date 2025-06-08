@@ -14,6 +14,15 @@
         color: var(--bs-secondary);
         margin-bottom: 0.5rem;
     }
+    .card-header {
+        cursor: pointer;
+    }
+    .card-header .bi-chevron-down {
+        transition: transform 0.2s;
+    }
+    .card-header.collapsed .bi-chevron-down {
+        transform: rotate(-90deg);
+    }
 </style>
 {% endblock %}
 
@@ -40,61 +49,89 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ url_for('email.update_settings') }}">
+    <form method="POST" action="{{ url_for('email.settings_update') }}" id="settingsForm">
+        <!-- Add CSRF token if enabled -->
+        {% if csrf_token %}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% endif %}
         <!-- Server Settings -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-server me-2"></i>
-                    Server Configuration
+            <div class="card-header" data-bs-toggle="collapse" data-bs-target="#serverSettings" aria-expanded="true">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-server me-2"></i>Server Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
                 </h5>
             </div>
-            <div class="card-body">
-                <div class="setting-section">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">SMTP Port</label>
-                                <div class="setting-description">Port for SMTP connections (standard: 25, 587)</div>
-                                <input type="number" 
-                                       class="form-control" 
-                                       name="Server.SMTP_PORT" 
-                                       value="{{ settings['Server']['SMTP_PORT'] }}"
-                                       min="1" max="65535">
+            <div id="serverSettings" class="collapse show">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">SMTP Port</label>
+                                    <div class="setting-description">Port for SMTP unencrypted connections (standard: 25)</div>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           name="Server.smtp_port" 
+                                           value="{{ settings['Server']['smtp_port'] }}"
+                                           min="1" max="65535">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">SMTP STARTTLS Port</label>
+                                    <div class="setting-description">Port for SMTP STARTTLS connections (standard: 587)</div>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           name="Server.smtp_tls_port" 
+                                           value="{{ settings['Server']['smtp_tls_port'] }}"
+                                           min="1" max="65535">
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">SMTP TLS Port</label>
-                                <div class="setting-description">Port for SMTP over TLS connections (standard: 465)</div>
-                                <input type="number" 
-                                       class="form-control" 
-                                       name="Server.SMTP_TLS_PORT" 
-                                       value="{{ settings['Server']['SMTP_TLS_PORT'] }}"
-                                       min="1" max="65535">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Bind IP Address</label>
+                                    <div class="setting-description">IP address to bind SMTP server only to (0.0.0.0 for all interfaces)</div>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Server.bind_ip" 
+                                           value="{{ settings['Server']['bind_ip'] }}"
+                                           pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Hostname</label>
+                                    <div class="setting-description">Server hostname for HELO/EHLO commands</div>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Server.hostname" 
+                                           value="{{ settings['Server']['hostname'] }}">
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Bind IP Address</label>
-                                <div class="setting-description">IP address to bind the server to (0.0.0.0 for all interfaces)</div>
-                                <input type="text" 
-                                       class="form-control" 
-                                       name="Server.BIND_IP" 
-                                       value="{{ settings['Server']['BIND_IP'] }}"
-                                       pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">HELO Hostname</label>
+                                    <div class="setting-description">Override HELO hostname for SMTP identification</div>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Server.helo_hostname" 
+                                           value="{{ settings['Server']['helo_hostname'] }}">
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Hostname</label>
-                                <div class="setting-description">Server hostname for HELO/EHLO commands</div>
-                                <input type="text" 
-                                       class="form-control" 
-                                       name="Server.hostname" 
-                                       value="{{ settings['Server']['hostname'] }}">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Server Banner</label>
+                                    <div class="setting-description">Custom SMTP server banner (empty by default - hides SMTP version)</div>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Server.server_banner" 
+                                           value="{{ settings['Server']['server_banner'] }}">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -104,21 +141,47 @@
 
         <!-- Database Settings -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-database me-2"></i>
-                    Database Configuration
+            <div class="card-header collapsed" data-bs-toggle="collapse" data-bs-target="#databaseSettings" aria-expanded="false">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-database me-2"></i>Database Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
                 </h5>
             </div>
-            <div class="card-body">
-                <div class="setting-section">
-                    <div class="mb-3">
-                        <label class="form-label">Database URL</label>
-                        <div class="setting-description">SQLite database file path or connection string</div>
-                        <input type="text" 
-                               class="form-control font-monospace" 
-                               name="Database.DATABASE_URL" 
-                               value="{{ settings['Database']['DATABASE_URL'] }}">
+            <div id="databaseSettings" class="collapse">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="mb-3">
+                            <label class="form-label">Database URL</label>
+                            <div class="setting-description">Database connection string</div>
+                            <div class="input-group mb-2">
+                                <input type="text" 
+                                       class="form-control font-monospace" 
+                                       name="Database.database_url" 
+                                       id="databaseUrl"
+                                       value="{{ settings['Database']['database_url'] }}">
+                                <button class="btn btn-primary" type="button" onclick="testDatabaseConnection()">
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    Test Connection
+                                </button>
+                            </div>
+                            <div class="mt-3">
+                                <label class="form-label">Example Connection Strings:</label>
+                                <div class="list-group">
+                                    <button type="button" class="list-group-item list-group-item-action" onclick="setDatabaseExample('sqlite')">
+                                        <strong>SQLite:</strong> sqlite:///email_server/server_data/smtp_server.db
+                                    </button>
+                                    <button type="button" class="list-group-item list-group-item-action" onclick="setDatabaseExample('mysql')">
+                                        <strong>MySQL:</strong> mysql://user:password@localhost:3306/dbname
+                                    </button>
+                                    <button type="button" class="list-group-item list-group-item-action" onclick="setDatabaseExample('postgresql')">
+                                        <strong>PostgreSQL:</strong> postgresql://user:password@localhost:5432/dbname
+                                    </button>
+                                    <button type="button" class="list-group-item list-group-item-action" onclick="setDatabaseExample('mssql')">
+                                        <strong>MSSQL:</strong> mssql+pyodbc://user:password@server:1433/dbname?driver=ODBC+Driver+17+for+SQL+Server
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -126,36 +189,38 @@
 
         <!-- Logging Settings -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-journal-text me-2"></i>
-                    Logging Configuration
+            <div class="card-header collapsed" data-bs-toggle="collapse" data-bs-target="#loggingSettings" aria-expanded="false">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-journal-text me-2"></i>Logging Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
                 </h5>
             </div>
-            <div class="card-body">
-                <div class="setting-section">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Log Level</label>
-                                <div class="setting-description">Minimum log level to record</div>
-                                <select class="form-select" name="Logging.LOG_LEVEL">
-                                    <option value="DEBUG" {{ 'selected' if settings['Logging']['LOG_LEVEL'] == 'DEBUG' else '' }}>DEBUG</option>
-                                    <option value="INFO" {{ 'selected' if settings['Logging']['LOG_LEVEL'] == 'INFO' else '' }}>INFO</option>
-                                    <option value="WARNING" {{ 'selected' if settings['Logging']['LOG_LEVEL'] == 'WARNING' else '' }}>WARNING</option>
-                                    <option value="ERROR" {{ 'selected' if settings['Logging']['LOG_LEVEL'] == 'ERROR' else '' }}>ERROR</option>
-                                    <option value="CRITICAL" {{ 'selected' if settings['Logging']['LOG_LEVEL'] == 'CRITICAL' else '' }}>CRITICAL</option>
-                                </select>
+            <div id="loggingSettings" class="collapse">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Log Level</label>
+                                    <div class="setting-description">Minimum log level to record</div>
+                                    <select class="form-select" name="Logging.log_level">
+                                        <option value="DEBUG" {{ 'selected' if settings['Logging']['log_level'] == 'DEBUG' else '' }}>DEBUG</option>
+                                        <option value="INFO" {{ 'selected' if settings['Logging']['log_level'] == 'INFO' else '' }}>INFO</option>
+                                        <option value="WARNING" {{ 'selected' if settings['Logging']['log_level'] == 'WARNING' else '' }}>WARNING</option>
+                                        <option value="ERROR" {{ 'selected' if settings['Logging']['log_level'] == 'ERROR' else '' }}>ERROR</option>
+                                        <option value="CRITICAL" {{ 'selected' if settings['Logging']['log_level'] == 'CRITICAL' else '' }}>CRITICAL</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Hide aiosmtpd INFO Messages</label>
-                                <div class="setting-description">Reduce verbose logging from aiosmtpd library</div>
-                                <select class="form-select" name="Logging.hide_info_aiosmtpd">
-                                    <option value="true" {{ 'selected' if settings['Logging']['hide_info_aiosmtpd'] == 'true' else '' }}>Yes</option>
-                                    <option value="false" {{ 'selected' if settings['Logging']['hide_info_aiosmtpd'] == 'false' else '' }}>No</option>
-                                </select>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Hide aiosmtpd INFO Messages</label>
+                                    <div class="setting-description">Reduce verbose logging from aiosmtpd library</div>
+                                    <select class="form-select" name="Logging.hide_info_aiosmtpd">
+                                        <option value="true" {{ 'selected' if settings['Logging']['hide_info_aiosmtpd'] == 'true' else '' }}>Yes</option>
+                                        <option value="false" {{ 'selected' if settings['Logging']['hide_info_aiosmtpd'] == 'false' else '' }}>No</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -165,22 +230,24 @@
 
         <!-- Relay Settings -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-arrow-repeat me-2"></i>
-                    Email Relay Configuration
+            <div class="card-header collapsed" data-bs-toggle="collapse" data-bs-target="#relaySettings" aria-expanded="false">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-arrow-repeat me-2"></i>Email Relay Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
                 </h5>
             </div>
-            <div class="card-body">
-                <div class="setting-section">
-                    <div class="mb-3">
-                        <label class="form-label">Relay Timeout (seconds)</label>
-                        <div class="setting-description">Timeout for external SMTP connections when relaying emails</div>
-                        <input type="number" 
-                               class="form-control" 
-                               name="Relay.RELAY_TIMEOUT" 
-                               value="{{ settings['Relay']['RELAY_TIMEOUT'] }}"
-                               min="5" max="300">
+            <div id="relaySettings" class="collapse">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="mb-3">
+                            <label class="form-label">Relay Timeout (seconds)</label>
+                            <div class="setting-description">Timeout for external SMTP connections when relaying emails</div>
+                            <input type="number" 
+                                   class="form-control" 
+                                   name="Relay.relay_timeout" 
+                                   value="{{ settings['Relay']['relay_timeout'] }}"
+                                   min="5" max="300">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -188,33 +255,57 @@
 
         <!-- TLS Settings -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-shield-lock me-2"></i>
-                    TLS/SSL Configuration
+            <div class="card-header collapsed" data-bs-toggle="collapse" data-bs-target="#tlsSettings" aria-expanded="false">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-shield-lock me-2"></i>TLS/SSL Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
                 </h5>
             </div>
-            <div class="card-body">
-                <div class="setting-section">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">TLS Certificate File</label>
-                                <div class="setting-description">Path to SSL certificate file (.crt or .pem)</div>
-                                <input type="text" 
-                                       class="form-control font-monospace" 
-                                       name="TLS.TLS_CERT_FILE" 
-                                       value="{{ settings['TLS']['TLS_CERT_FILE'] }}">
+            <div id="tlsSettings" class="collapse">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">TLS Certificate File</label>
+                                    <div class="setting-description">Path to SSL certificate file (.crt or .pem)</div>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control font-monospace" 
+                                               name="TLS.tls_cert_file" 
+                                               value="{{ settings['TLS']['tls_cert_file'] }}">
+                                        <input type="file" 
+                                               class="d-none" 
+                                               id="certFileUpload" 
+                                               accept=".crt,.pem">
+                                        <button class="btn btn-outline-secondary" 
+                                                type="button"
+                                                onclick="document.getElementById('certFileUpload').click()">
+                                            <i class="bi bi-upload"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">TLS Private Key File</label>
-                                <div class="setting-description">Path to SSL private key file (.key or .pem)</div>
-                                <input type="text" 
-                                       class="form-control font-monospace" 
-                                       name="TLS.TLS_KEY_FILE" 
-                                       value="{{ settings['TLS']['TLS_KEY_FILE'] }}">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">TLS Private Key File</label>
+                                    <div class="setting-description">Path to SSL private key file (.key or .pem)</div>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control font-monospace" 
+                                               name="TLS.tls_key_file" 
+                                               value="{{ settings['TLS']['tls_key_file'] }}">
+                                        <input type="file" 
+                                               class="d-none" 
+                                               id="keyFileUpload" 
+                                               accept=".key,.pem">
+                                        <button class="btn btn-outline-secondary" 
+                                                type="button"
+                                                onclick="document.getElementById('keyFileUpload').click()">
+                                            <i class="bi bi-upload"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -224,22 +315,39 @@
 
         <!-- DKIM Settings -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-key me-2"></i>
-                    DKIM Configuration
+            <div class="card-header collapsed" data-bs-toggle="collapse" data-bs-target="#dkimSettings" aria-expanded="false">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-key me-2"></i>DKIM Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
                 </h5>
             </div>
-            <div class="card-body">
-                <div class="setting-section">
-                    <div class="mb-3">
-                        <label class="form-label">DKIM Key Size</label>
-                        <div class="setting-description">RSA key size for new DKIM keys (larger = more secure, slower)</div>
-                        <select class="form-select" name="DKIM.DKIM_KEY_SIZE">
-                            <option value="1024" {{ 'selected' if settings['DKIM']['DKIM_KEY_SIZE'] == '1024' else '' }}>1024 bits</option>
-                            <option value="2048" {{ 'selected' if settings['DKIM']['DKIM_KEY_SIZE'] == '2048' else '' }}>2048 bits (Recommended)</option>
-                            <option value="4096" {{ 'selected' if settings['DKIM']['DKIM_KEY_SIZE'] == '4096' else '' }}>4096 bits</option>
-                        </select>
+            <div id="dkimSettings" class="collapse">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="mb-3">
+                            <label class="form-label">DKIM Key Size</label>
+                            <div class="setting-description">RSA key size for new DKIM keys (larger = more secure, slower)</div>
+                            <select class="form-select" name="DKIM.dkim_key_size">
+                                <option value="1024" {{ 'selected' if settings['DKIM']['dkim_key_size'] == '1024' else '' }}>1024 bits</option>
+                                <option value="2048" {{ 'selected' if settings['DKIM']['dkim_key_size'] == '2048' else '' }}>2048 bits (Recommended)</option>
+                                <option value="4096" {{ 'selected' if settings['DKIM']['dkim_key_size'] == '4096' else '' }}>4096 bits</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">SPF Server IP</label>
+                            <div class="setting-description">Public IP address of server for SPF records (used if auto-detection fails)</div>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="DKIM.spf_server_ip" 
+                                       value="{{ settings['DKIM']['spf_server_ip'] }}"
+                                       pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$">
+                                <button class="btn btn-danger" type="button" onclick="getPublicIP()">
+                                    <i class="bi bi-cloud-download me-1"></i>
+                                    Get Public IP
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -334,7 +442,7 @@
     // Form validation
     document.querySelector('form').addEventListener('submit', function(e) {
         // Basic validation
-        const ports = ['Server.SMTP_PORT', 'Server.SMTP_TLS_PORT'];
+        const ports = ['Server.smtp_port', 'Server.smtp_tls_port'];
         for (const portField of ports) {
             const input = document.querySelector(`[name="${portField}"]`);
             const port = parseInt(input.value);
@@ -347,8 +455,8 @@
         }
         
         // Check if ports are different
-        const smtpPort = document.querySelector('[name="Server.SMTP_PORT"]').value;
-        const tlsPort = document.querySelector('[name="Server.SMTP_TLS_PORT"]').value;
+        const smtpPort = document.querySelector('[name="Server.smtp_port"]').value;
+        const tlsPort = document.querySelector('[name="Server.smtp_tls_port"]').value;
         if (smtpPort === tlsPort) {
             e.preventDefault();
             alert('SMTP and TLS ports must be different.');
@@ -378,5 +486,121 @@
                 });
         });
     }
+
+    // Handle certificate file uploads
+    document.getElementById('certFileUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('cert_file', file);
+        
+        fetch('{{ url_for("email.upload_cert") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.querySelector('[name="TLS.tls_cert_file"]').value = data.filepath;
+                showToast('Certificate file uploaded successfully', 'success');
+            } else {
+                showToast(data.message || 'Failed to upload certificate file', 'danger');
+            }
+        })
+        .catch(() => showToast('Failed to upload certificate file', 'danger'));
+    });
+
+    document.getElementById('keyFileUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('key_file', file);
+        
+        fetch('{{ url_for("email.upload_key") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.querySelector('[name="TLS.tls_key_file"]').value = data.filepath;
+                showToast('Key file uploaded successfully', 'success');
+            } else {
+                showToast(data.message || 'Failed to upload key file', 'danger');
+            }
+        })
+        .catch(() => showToast('Failed to upload key file', 'danger'));
+    });
+
+    // Handle database examples
+    function setDatabaseExample(type) {
+        const urlInput = document.getElementById('databaseUrl');
+        switch(type) {
+            case 'sqlite':
+                urlInput.value = 'sqlite:///email_server/server_data/smtp_server.db';
+                break;
+            case 'mysql':
+                urlInput.value = 'mysql://user:password@localhost:3306/dbname';
+                break;
+            case 'postgresql':
+                urlInput.value = 'postgresql://user:password@localhost:5432/dbname';
+                break;
+            case 'mssql':
+                urlInput.value = 'mssql+pyodbc://user:password@server:1433/dbname?driver=ODBC+Driver+17+for+SQL+Server';
+                break;
+        }
+    }
+
+    // Test database connection
+    function testDatabaseConnection() {
+        const url = document.getElementById('databaseUrl').value;
+        fetch('{{ url_for("email.test_database_connection_endpoint") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ url: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+            showToast(data.message || (data.status === 'success' ? 'Database connection successful!' : 'Failed to connect to database'), 
+                     data.status === 'success' ? 'success' : 'danger');
+        })
+        .catch(() => showToast('Failed to test database connection', 'danger'));
+    }
+
+    // Get public IP
+    function getPublicIP() {
+        fetch('{{ url_for("email.get_server_ip") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.ip) {
+                document.querySelector('[name="DKIM.spf_server_ip"]').value = data.ip;
+                showToast('Public IP fetched successfully', 'success');
+            } else {
+                showToast('Failed to fetch public IP', 'danger');
+            }
+        })
+        .catch(() => showToast('Failed to fetch public IP', 'danger'));
+    }
+
+    // Handle form submission
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
+        // Handle empty server banner
+        const serverBanner = document.querySelector('[name="Server.server_banner"]');
+        if (serverBanner && !serverBanner.value.trim()) {
+            serverBanner.value = '""';
+        }
+
+        // Log form data being submitted
+        const formData = new FormData(this);
+        console.log('Submitting settings with data:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+    });
 </script>
 {% endblock %}

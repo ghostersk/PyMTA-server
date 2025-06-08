@@ -40,8 +40,8 @@
                 </li>
 
                 <li class="nav-item mb-1">
-                    <a href="{{ url_for('email.users_list') }}" 
-                       class="nav-link text-white {{ 'active' if request.endpoint in ['email.users_list', 'email.add_user'] else '' }}">
+                    <a href="{{ url_for('email.senders_list') }}" 
+                       class="nav-link text-white {{ 'active' if request.endpoint in ['email.senders_list', 'email.add_user'] else '' }}">
                         <i class="bi bi-people me-2"></i>
                         Allowed Senders
                         <span class="badge bg-secondary ms-auto">{{ user_count if user_count is defined else '' }}</span>

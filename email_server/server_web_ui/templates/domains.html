@@ -31,7 +31,7 @@
                             <th>Domain Name</th>
                             <th>Status</th>
                             <th>Created</th>
-                            <th>Users</th>
+                            <th>Senders</th>
                             <th>DKIM</th>
                             <th>Actions</th>
                         </tr>
@@ -62,19 +62,26 @@
                             </td>
                             <td>
                                 <span class="badge bg-info">
-                                    {{ domain.users|length if domain.users else 0 }} users
+                                    {{ domain.users|length }} senders
                                 </span>
                             </td>
                             <td>
-                                {% set has_dkim = domain.dkim_keys and domain.dkim_keys|selectattr('is_active')|list %}
-                                {% if has_dkim %}
-                                    <span class="text-success">
-                                        <i class="bi bi-shield-check" title="DKIM Configured"></i>
+                                {% set active_dkim_keys = domain.dkim_keys|selectattr('is_active')|list %}
+                                {% if active_dkim_keys %}
+                                    <span class="dns-status" id="dkim-status-{{ domain.domain_name.replace('.', '-') }}">
+                                        <span class="status-indicator status-warning"></span>
+                                        <i class="bi bi-shield-check" title="DKIM Active (DNS not checked)"></i>
                                     </span>
                                 {% else %}
-                                    <span class="text-warning">
-                                        <i class="bi bi-shield-exclamation" title="No DKIM Key"></i>
-                                    </span>
+                                    {% if domain.dkim_keys|length > 0 %}
+                                        <span class="text-secondary">
+                                            <i class="bi bi-shield" title="DKIM Disabled"></i>
+                                        </span>
+                                    {% else %}
+                                        <span class="text-danger">
+                                            <i class="bi bi-shield-exclamation" title="No DKIM Key"></i>
+                                        </span>
+                                    {% endif %}
                                 {% endif %}
                             </td>
                             <td>
@@ -153,11 +160,15 @@
                     </li>
                     <li class="mb-2">
                         <i class="bi bi-shield-check text-warning me-2"></i>
-                        <strong>DKIM configured:</strong> {{ domains|selectattr('dkim_keys')|list|length }}
-                    </li>
-                    <li>
-                        <i class="bi bi-people text-info me-2"></i>
-                        <strong>Total users:</strong> {{ domains|sum(attribute='users')|length if domains[0].users is defined else 'N/A' }}
+                        <strong>DKIM configured:</strong> 
+                        {% set dkim_count = namespace(active=0) %}
+                        {% for domain in domains %}
+                            {% set active_dkim_keys = domain.dkim_keys|selectattr('is_active')|list %}
+                            {% if active_dkim_keys %}
+                                {% set dkim_count.active = dkim_count.active + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ dkim_count.active }}
                     </li>
                 </ul>
             </div>
@@ -183,7 +194,7 @@
                     </li>
                     <li>
                         <i class="bi bi-arrow-right text-primary me-2"></i>
-                        Add users or whitelist IPs for authentication
+                        Add senders or whitelist IPs for authentication
                     </li>
                 </ul>
             </div>
@@ -191,4 +202,74 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function checkDomainDKIM(domain, selector) {
+    const dkimStatus = document.getElementById(`dkim-status-${domain.replace('.', '-')}`);
+    if (!dkimStatus) return;
+    
+    try {
+        // Check DKIM DNS
+        const response = await fetch("{{ url_for('email.check_dkim_dns') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                domain: domain,
+                selector: selector
+            })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            dkimStatus.innerHTML = `
+                <span class="status-indicator status-success"></span>
+                <i class="bi bi-shield-check" title="DKIM Active & DNS Configured"></i>
+            `;
+        } else {
+            dkimStatus.innerHTML = `
+                <span class="status-indicator" style="background-color: #fd7e14;"></span>
+                <i class="bi bi-shield-exclamation" title="DKIM Active but DNS not found"></i>
+            `;
+        }
+    } catch (error) {
+        console.error('DKIM DNS check error:', error);
+        dkimStatus.innerHTML = `
+            <span class="status-indicator status-danger"></span>
+            <i class="bi bi-shield-x" title="Error checking DKIM DNS"></i>
+        `;
+    }
+}
+
+// Check DKIM DNS for all domains when page loads
+document.addEventListener('DOMContentLoaded', async function() {
+    {% for domain in domains %}
+        {% set active_dkim_keys = domain.dkim_keys|selectattr('is_active')|list %}
+        {% if active_dkim_keys %}
+            {% set active_key = active_dkim_keys|first %}
+            await checkDomainDKIM('{{ domain.domain_name }}', '{{ active_key.selector }}');
+        {% endif %}
+    {% endfor %}
+});
+</script>
+
+<style>
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+.status-success { background-color: #28a745; }
+.status-warning { background-color: #ffc107; }
+.status-danger { background-color: #dc3545; }
+.dns-status {
+    display: inline-flex;
+    align-items: center;
+}
+</style>
 {% endblock %}

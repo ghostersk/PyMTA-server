@@ -161,7 +161,7 @@ class DKIMManager:
             return {
                 'name': f'{dkim_key.selector}._domainkey.{domain_name}',
                 'type': 'TXT',
-                'value': f'v=DKIM1; k=rsa; p={public_key_data}'
+                'value': f'"v=DKIM1; k=rsa; p={public_key_data}"'  # Wrap in quotes
             }
         return None
 
