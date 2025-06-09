@@ -7,7 +7,7 @@ Enhanced security features:
 - All tables use 'esrv_' prefix for namespace isolation
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.sql import func
 from datetime import datetime
@@ -16,7 +16,8 @@ from email_server.settings_loader import load_settings
 from email_server.tool_box import ensure_folder_exists, get_logger
 
 settings = load_settings()
-DATABASE_URL = settings['Database']['DATABASE_URL']
+# ConfigParser keys are case-insensitive, so we can use either case
+DATABASE_URL = settings['Database']['database_url']
 
 ensure_folder_exists(DATABASE_URL)
 
@@ -36,6 +37,12 @@ class Domain(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     
+    # Add relationships with proper foreign key references
+    users = relationship("User", backref="domain", lazy="joined")
+    dkim_keys = relationship("DKIMKey", backref="domain", lazy="joined")
+    whitelisted_ips = relationship("WhitelistedIP", backref="domain", lazy="joined")
+    custom_headers = relationship("CustomHeader", backref="domain", lazy="joined")
+    
     def __repr__(self):
         return f"<Domain(id={self.id}, domain_name='{self.domain_name}', active={self.is_active})>"
 
@@ -52,7 +59,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    domain_id = Column(Integer, nullable=False)
+    domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=False)
     can_send_as_domain = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
@@ -93,7 +100,7 @@ class WhitelistedIP(Base):
     
     id = Column(Integer, primary_key=True)
     ip_address = Column(String, nullable=False)
-    domain_id = Column(Integer, nullable=False)
+    domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     
@@ -170,12 +177,13 @@ class DKIMKey(Base):
     __tablename__ = 'esrv_dkim_keys'
     
     id = Column(Integer, primary_key=True)
-    domain_id = Column(Integer, nullable=False)
+    domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=False)
     selector = Column(String, nullable=False, default='default')
     private_key = Column(Text, nullable=False)
     public_key = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
+    replaced_at = Column(DateTime, nullable=True)  # When this key was replaced by a new one
     
     def __repr__(self):
         return f"<DKIMKey(id={self.id}, domain_id={self.domain_id}, selector='{self.selector}', active={self.is_active})>"
@@ -185,7 +193,7 @@ class CustomHeader(Base):
     __tablename__ = 'esrv_custom_headers'
     
     id = Column(Integer, primary_key=True)
-    domain_id = Column(Integer, nullable=False)
+    domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=False)
     header_name = Column(String, nullable=False)
     header_value = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)

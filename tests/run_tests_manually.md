@@ -1,10 +1,18 @@
 ## setup domain and account for sending email:
 ```bash
-python -m email_server.cli_tools.py add-domain example.com
-python -m email_server.cli_tools.py add-user test@example.com testpass123 example.com
-python -m email_server.cli_tools.py add-ip 127.0.0.1 example.com 
-python -m email_server.cli_tools.py add-ip 10.100.111.1 example.com 
-python -m email_server.cli_tools.py generate-dkim example.com
+# Manual Test Setup Instructions
+
+## Setup via Web Interface
+1. Start the application: `python app.py`
+2. Open web browser to: http://localhost:5000/email
+3. Use the web interface to:
+   - Add domain: example.com
+   - Add user: test@example.com with password testpass123
+   - Add IP whitelist: 127.0.0.1 and 10.100.111.1 for domain example.com
+   - Generate DKIM key for example.com
+
+## Alternative Setup via Python Script
+Create a setup script if needed for automated testing.
 ```
 
 ## Check db logs

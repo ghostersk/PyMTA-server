@@ -49,6 +49,8 @@ DEFAULTS = {
         '; DKIM signing configuration': None,
         '; RSA key size for DKIM keys (1024, 2048, 4096)': None,
         'DKIM_KEY_SIZE': '2048',
+        '; Provide Public IP address of server, used for SPF in case detection fails': None,
+        'SPF_SERVER_IP': '192.168.1.1',
     },
 }
 

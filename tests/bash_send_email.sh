@@ -10,11 +10,12 @@ cc_recipient="targetcc@example.com"
 bcc_recipient="targetbcc@example.com"
 
 <<com
-python -m email_server.cli_tools add-domain $domain
-python -m email_server.cli_tools add-user $sender $password $domain
-python -m email_server.cli_tools add-ip 127.0.0.1 $domain
-python -m email_server.cli_tools add-ip 10.100.111.1 $domain
-python -m email_server.cli_tools generate-dkim $domain
+# Setup domain and user via web interface first
+# Visit http://localhost:5000/email to configure:
+# - Add domain: $domain
+# - Add user: $sender with password $password
+# - Add IP whitelist: 127.0.0.1 and 10.100.111.1
+# - Generate DKIM key for domain
 
 # options to add CC and BCC recipients for swaks
       --cc $cc_recipient

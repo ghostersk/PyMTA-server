@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Email Server Management{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --sidebar-width: 280px;
+        }
+        
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .content-area {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .navbar-brand {
+            color: #fff !important;
+        }
+        
+        .card {
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
+        }
+        
+        .table-dark {
+            --bs-table-bg: #2d2d2d;
+            --bs-table-border-color: #404040;
+        }
+        
+        .btn-outline-light:hover {
+            background-color: #495057;
+        }
+        
+        .alert-success {
+            background-color: #0f5132;
+            border-color: #146c43;
+            color: #75b798;
+        }
+        
+        .alert-danger {
+            background-color: #58151c;
+            border-color: #842029;
+            color: #ea868f;
+        }
+        
+        .alert-warning {
+            background-color: #664d03;
+            border-color: #997404;
+            color: #ffda6a;
+        }
+        
+        .alert-info {
+            background-color: #055160;
+            border-color: #087990;
+            color: #6edff6;
+        }
+        
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .form-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .text-muted {
+            color: #adb5bd !important;
+        }
+        
+        .border-success {
+            border-color: #198754 !important;
+        }
+        
+        .border-danger {
+            border-color: #dc3545 !important;
+        }
+        
+        .text-success {
+            color: #75b798 !important;
+        }
+        
+        .text-danger {
+            color: #ea868f !important;
+        }
+        
+        .text-warning {
+            color: #ffda6a !important;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #495057;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6c757d;
+        }
+    </style>
+    
+    <!-- Custom SMTP Management CSS -->
+    <link href="{{ url_for('email.static', filename='css/smtp-management.css') }}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="main-container">
+        <!-- Sidebar -->
+        {% include 'sidebar_email.html' %}
+        
+        <!-- Main content -->
+        <div class="content-area">
+            <!-- Top navbar -->
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+                <div class="container-fluid">
+                    <span class="navbar-brand mb-0 h1">
+                        <i class="bi bi-envelope-fill me-2"></i>
+                        {% block page_title %}Email Server Management{% endblock %}
+                    </span>
+                    <div class="navbar-nav ms-auto">
+                        <span class="navbar-text">
+                            <i class="bi bi-clock-fill me-1"></i>
+                            <span id="current-time"></span>
+                        </span>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Toast container for notifications -->
+            <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="toast align-items-center text-bg-{{ 'danger' if category == 'error' else category }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+                                <div class="d-flex">
+                                    <div class="toast-body">
+                                        <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                                        {{ message }}
+                                    </div>
+                                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+            
+            <!-- Page content -->
+            <main>
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Custom Confirmation Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">
+                        <i class="bi bi-question-circle me-2"></i>
+                        Confirm Action
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmationModalBody">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmationModalConfirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script>
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const dateString = now.toLocaleDateString();
+            document.getElementById('current-time').textContent = `${dateString} ${timeString}`;
+        }
+        
+        // Update time every second
+        setInterval(updateTime, 1000);
+        updateTime(); // Initial call
+        
+        // Initialize toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            const toastElements = document.querySelectorAll('.toast');
+            toastElements.forEach(function(toastElement) {
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+            });
+        });
+        
+        // Function to show dynamic toasts
+        function showToast(message, type = 'info') {
+            const toastContainer = document.querySelector('.toast-container');
+            const toastId = 'toast-' + Date.now();
+            const iconMap = {
+                'danger': 'exclamation-triangle',
+                'success': 'check-circle',
+                'warning': 'exclamation-triangle',
+                'info': 'info-circle'
+            };
+            
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-${iconMap[type] || 'info-circle'} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            const newToast = new bootstrap.Toast(document.getElementById(toastId));
+            newToast.show();
+            
+            // Remove toast element after it's hidden
+            document.getElementById(toastId).addEventListener('hidden.bs.toast', function() {
+                this.remove();
+            });
+        }
+        
+        // Custom confirmation dialog to replace browser alerts
+        function showConfirmation(message, title = 'Confirm Action', confirmButtonText = 'Confirm', confirmButtonClass = 'btn-primary') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmationModal');
+                const modalTitle = document.getElementById('confirmationModalLabel');
+                const modalBody = document.getElementById('confirmationModalBody');
+                const confirmButton = document.getElementById('confirmationModalConfirm');
+                
+                // Set content
+                modalTitle.innerHTML = `<i class="bi bi-question-circle me-2"></i>${title}`;
+                modalBody.textContent = message;
+                confirmButton.textContent = confirmButtonText;
+                
+                // Reset button classes and add new one
+                confirmButton.className = `btn ${confirmButtonClass}`;
+                
+                // Set up event handlers
+                const handleConfirm = () => {
+                    resolve(true);
+                    bootstrap.Modal.getInstance(modal).hide();
+                    cleanup();
+                };
+                
+                const handleCancel = () => {
+                    resolve(false);
+                    cleanup();
+                };
+                
+                const cleanup = () => {
+                    confirmButton.removeEventListener('click', handleConfirm);
+                    modal.removeEventListener('hidden.bs.modal', handleCancel);
+                };
+                
+                confirmButton.addEventListener('click', handleConfirm);
+                modal.addEventListener('hidden.bs.modal', handleCancel, { once: true });
+                
+                // Show modal
+                new bootstrap.Modal(modal).show();
+            });
+        }
+        
+        // Confirmation dialogs for delete actions with data-confirm attribute
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteButtons = document.querySelectorAll('[data-confirm]');
+            deleteButtons.forEach(function(button) {
+                button.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    
+                    const confirmMessage = this.getAttribute('data-confirm');
+                    const confirmed = await showConfirmation(
+                        confirmMessage,
+                        'Confirm Action',
+                        'Confirm',
+                        'btn-danger'
+                    );
+                    
+                    if (confirmed) {
+                        // If it's a form button, submit the form
+                        const form = this.closest('form');
+                        if (form) {
+                            form.submit();
+                        } else if (this.href) {
+                            // If it's a link, navigate to the URL
+                            window.location.href = this.href;
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+    
+    <!-- Custom SMTP Management JavaScript -->
+    <script src="{{ url_for('email.static', filename='js/smtp-management.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

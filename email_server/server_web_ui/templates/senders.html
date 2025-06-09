@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Senders - Email Server Management{% endblock %}
+{% block page_title %}Sender Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-people me-2"></i>
+        Senders
+    </h2>
+    <a href="{{ url_for('email.add_sender') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-2"></i>
+        Add Sender
+    </a>
+</div>
+
+{% if users %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Sender Statistics
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong>Active Senders:</strong> {{ users|selectattr('0.is_active')|list|length }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-star text-warning me-2"></i>
+                        <strong>Domain Sender:</strong> {{ users|selectattr('0.can_send_as_domain')|list|length }}
+                    </li>
+                    <li>
+                        <i class="bi bi-person text-info me-2"></i>
+                        <strong>Regular Senders:</strong> {{ users|rejectattr('0.can_send_as_domain')|list|length }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Permission Levels
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <span class="badge bg-warning me-2" style="color: black;">Domain Sender</span>
+                        Can send as any email address in their domain
+                    </li>
+                    <li>
+                        <span class="badge bg-info me-2" style="color: black;">Regular Sender</span>
+                        Can only send as their own email address
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-list-ul me-2"></i>
+            All Senders
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% if users %}
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Domain</th>
+                            <th>Permissions</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user, domain in users %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ user.email }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ domain.domain_name }}</span>
+                            </td>
+                            <td>
+                                {% if user.can_send_as_domain %}
+                                    <span class="badge bg-warning"  style="color: black;">
+                                        <i class="bi bi-star me-1"></i>
+                                        Domain Sender
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">Can send as *@{{ domain.domain_name }}</small>
+                                {% else %}
+                                    <span class="badge bg-info" style="color: black;">
+                                        <i class="bi bi-person me-1"></i>
+                                        Regular Sender
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">Can only send as {{ user.email }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Active
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ user.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <!-- Edit Button -->
+                                    <a href="{{ url_for('email.edit_sender', user_id=user.id) }}" 
+                                       class="btn btn-outline-primary btn-sm"
+                                       title="Edit Sender">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    
+                                    <!-- Enable/Disable Button -->
+                                    {% if user.is_active %}
+                                        <form method="post" action="{{ url_for('email.delete_sender', user_id=user.id) }}" class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-warning btn-sm"
+                                                    title="Disable Sender"
+                                                    onclick="return confirm('Disable user {{ user.email }}?')">
+                                                <i class="bi bi-pause-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{{ url_for('email.enable_sender', user_id=user.id) }}" class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-success btn-sm"
+                                                    title="Enable Sender"
+                                                    onclick="return confirm('Enable user {{ user.email }}?')">
+                                                <i class="bi bi-play-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    <!-- Permanent Remove Button -->
+                                    <form method="post" action="{{ url_for('email.remove_sender', user_id=user.id) }}" class="d-inline">
+                                        <button type="submit" 
+                                                class="btn btn-outline-danger btn-sm"
+                                                title="Permanently Remove Sender"
+                                                onclick="return confirm('Permanently remove user {{ user.email }}? This cannot be undone!')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">No senders configured</h4>
+                <p class="text-muted">Add sender to enable username/password authentication</p>
+                <a href="{{ url_for('email.add_sender') }}" class="btn btn-primary">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Add Your First Sender
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

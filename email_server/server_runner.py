@@ -32,7 +32,7 @@ except RuntimeError:
     # No running loop, set debug when we create one
     pass
 
-async def start_server():
+async def start_server(shutdown_event=None):
     """Main server function."""
     logger.debug("Starting SMTP Server with DKIM support...")
     
@@ -40,10 +40,10 @@ async def start_server():
     logger.debug("Initializing database...")
     create_tables()
     
-    # Initialize DKIM manager and generate keys for domains without them
+    # Initialize DKIM manager (do not auto-generate keys for all domains)
     logger.debug("Initializing DKIM manager...")
     dkim_manager = DKIMManager()
-    dkim_manager.initialize_default_keys()
+    # dkim_manager.initialize_default_keys()  # Removed: do not auto-generate DKIM keys for all domains
     
     # Add test data if needed
     from .models import Session, Domain, User, WhitelistedIP, hash_password
@@ -118,13 +118,16 @@ async def start_server():
     controller_tls.start()
     logger.debug(f'  - Plain SMTP (IP whitelist): {BIND_IP}:{SMTP_PORT}')
     logger.debug(f'  - STARTTLS SMTP (auth required): {BIND_IP}:{SMTP_TLS_PORT}')
-    logger.debug('Management commands:')
-    logger.debug('  python cli_tools.py --help')
+    logger.debug('Management available via web interface at: http://localhost:5000/email')
     
     try:
-        await asyncio.Event().wait()
+        if shutdown_event is not None:
+            await shutdown_event.wait()
+        else:
+            await asyncio.Event().wait()
     except KeyboardInterrupt:
         logger.debug('Shutting down SMTP servers...')
+    finally:
         controller_plain.stop()
         controller_tls.stop()
         logger.debug('SMTP servers stopped.')

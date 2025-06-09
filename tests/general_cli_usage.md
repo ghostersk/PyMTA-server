@@ -1,154 +1,90 @@
 # ========================================
-# SMTP Server Management with cli_tools.py
+# SMTP Server Management via Web Interface
 # ========================================
 
-# 1. Initialize the database (run this first)
-`python cli_tools.py init`
+The SMTP Server now uses a web-based management interface instead of CLI tools.
 
-# ========================================
-# DOMAIN MANAGEMENT
-# ========================================
-
-# Add domains that require authentication (default)
-```python
-python cli_tools.py add-domain example.com
-python cli_tools.py add-domain mycompany.org
-python cli_tools.py add-domain testdomain.net
-```
-
-# Add domain that doesn't require authentication (open relay for this domain)
-`python cli_tools.py add-domain public.com --no-auth`
-
-# ========================================
-# USER MANAGEMENT (for authentication)
-# ========================================
-
-# Add users for authentication
-```python
-python cli_tools.py add-user test@example.com testpass123 example.com
-python cli_tools.py add-user admin@example.com adminpass456 example.com
-python cli_tools.py add-user john@mycompany.org johnpass789 mycompany.org
-python cli_tools.py add-user support@mycompany.org supportpass321 mycompany.org
-```
-
-# Add more test users
-```
-python cli_tools.py add-user demo@testdomain.net demopass111 testdomain.net
-python cli_tools.py add-user sales@example.com salespass222 example.com
-```
-
-# ========================================
-# IP WHITELIST MANAGEMENT (for IP-based auth)
-# ========================================
-
-# Add IP addresses that can send without username/password
-```python
-python cli_tools.py add-ip 127.0.0.1 example.com          # Localhost
-python cli_tools.py add-ip 192.168.1.100 example.com      # Local network
-python cli_tools.py add-ip 10.0.0.50 mycompany.org        # Internal server
-python cli_tools.py add-ip 203.0.113.10 example.com       # External trusted IP
-```
-
-# ========================================
-# DKIM KEY MANAGEMENT
-# ========================================
-
-# Generate DKIM keys for domains (for email signing)
-```python
-python cli_tools.py generate-dkim example.com
-python cli_tools.py generate-dkim mycompany.org
-python cli_tools.py generate-dkim testdomain.net
-```
-
-# List all DKIM keys
-`python cli_tools.py list-dkim`
-
-# Show DNS records that need to be added to your DNS provider
-`python cli_tools.py show-dns`
-
-# ========================================
-# COMPLETE SETUP EXAMPLE
-# ========================================
-
-# Complete setup for a new domain:
-```python
-python cli_tools.py add-domain newdomain.com
-python cli_tools.py add-user info@newdomain.com password123 newdomain.com
-python cli_tools.py add-user noreply@newdomain.com noreplypass456 newdomain.com
-python cli_tools.py add-ip 192.168.1.200 newdomain.com
-python cli_tools.py generate-dkim newdomain.com
-```
-
-# ========================================
-# VERIFICATION COMMANDS
-# ========================================
-
-# Check what's in the database
+## Starting the Application
 ```bash
-sqlite3 smtp_server.db "SELECT * FROM domains;"
-sqlite3 smtp_server.db "SELECT email, domain_id FROM users;"
-sqlite3 smtp_server.db "SELECT ip_address, domain_id FROM whitelisted_ips;"
-sqlite3 smtp_server.db "SELECT domain, selector, active FROM dkim_keys;"
+# Start the unified application (SMTP + Web Interface)
+python app.py
+
+# Start only the web interface (for management)
+python app.py --web-only
+
+# Start only the SMTP server
+python app.py --smtp-only
 ```
+
+## Web Interface Access
+- URL: http://localhost:5000/email
+- Available management features:
+  - Domain management
+  - User authentication management  
+  - IP whitelist management
+  - DKIM key management with DNS validation
+  - Email logs and monitoring
+  - Server settings configuration
+
+## Management Tasks via Web Interface
+
+### Domain Management
+1. Navigate to http://localhost:5000/email/domains
+2. Click "Add Domain" to add new domains
+3. Configure authentication requirements per domain
+4. Enable/disable domains as needed
+
+### User Management  
+1. Navigate to http://localhost:5000/email/users
+2. Add users for email authentication
+3. Associate users with specific domains
+4. Enable/disable user accounts
+
+### IP Whitelist Management
+1. Navigate to http://localhost:5000/email/ips
+2. Add IP addresses for authentication-free sending
+3. Associate IPs with specific domains
+4. Manage IP access permissions
+
+### DKIM Key Management
+1. Navigate to http://localhost:5000/email/dkim
+2. Generate DKIM keys automatically when adding domains
+3. View DNS records that need to be configured
+4. Check DNS propagation status
+5. Regenerate keys if needed
+
+## Example Setup Workflow
+
+### Development Setup
+1. Start the application: `python app.py --debug`
+2. Open browser to: http://localhost:5000/email
+3. Add domain: localhost.dev
+4. Add user: dev@localhost.dev with password devpass123
+5. Add IP: 127.0.0.1 for localhost.dev
+6. Generate and configure DKIM key
+
+### Production Setup
+1. Start the application: `python app.py`
+2. Open browser to: http://localhost:5000/email
+3. Add your company domain
+4. Add notification/alert users with strong passwords
+5. Add your application server IPs to whitelist
+6. Generate DKIM keys and update DNS records
+
+## Database Direct Access (if needed)
+```bash
+# Check domains
+sqlite3 email_server/server_data/smtp_server.db "SELECT * FROM domains;"
+
+# Check users  
+sqlite3 email_server/server_data/smtp_server.db "SELECT email, domain_id FROM users;"
+
+# Check IP whitelist
+sqlite3 email_server/server_data/smtp_server.db "SELECT ip_address, domain_id FROM whitelisted_ips;"
+
+# Check DKIM keys
+sqlite3 email_server/server_data/smtp_server.db "SELECT domain, selector, active FROM dkim_keys;"
 
 # Check email logs
-`sqlite3 smtp_server.db "SELECT message_id, mail_from, rcpt_tos, status, created_at FROM email_logs ORDER BY created_at DESC LIMIT 10;"`
-
-# ========================================
-# HELP AND INFORMATION
-# ========================================
-
-# Show all available commands
-`python cli_tools.py --help`
-
-# Show help for specific commands
-```python
-python cli_tools.py add-domain --help
-python cli_tools.py add-user --help
-python cli_tools.py add-ip --help
-python cli_tools.py generate-dkim --help
+sqlite3 email_server/server_data/smtp_server.db "SELECT message_id, mail_from, rcpt_tos, status, created_at FROM email_logs ORDER BY created_at DESC LIMIT 10;"
 ```
-
-# ========================================
-# PRACTICAL EXAMPLES
-# ========================================
-
-# Example 1: Setup for development
-```python
-python cli_tools.py init
-python cli_tools.py add-domain localhost.dev
-python cli_tools.py add-user dev@localhost.dev devpass123 localhost.dev
-python cli_tools.py add-ip 127.0.0.1 localhost.dev
-python cli_tools.py generate-dkim localhost.dev
-```
-
-# Example 2: Setup for production company
-```python
-python cli_tools.py add-domain company.com
-python cli_tools.py add-user notifications@company.com notifypass123 company.com
-python cli_tools.py add-user alerts@company.com alertpass456 company.com
-python cli_tools.py add-ip 10.0.1.100 company.com  # Application server
-python cli_tools.py add-ip 10.0.1.101 company.com  # Backup server
-python cli_tools.py generate-dkim company.com
-```
-# Example 3: Setup for testing with external domain
-```python
-python cli_tools.py add-domain example.org
-python cli_tools.py add-user test@example.org testpass789 example.org
-python cli_tools.py generate-dkim example.org
-python cli_tools.py show-dns  # Get DNS records to add
-```
-# ========================================
-# TROUBLESHOOTING COMMANDS
-# ========================================
-
-# If you need to check if everything is set up correctly:
-```python
-python cli_tools.py list-dkim                          # Verify DKIM keys exist
-sqlite3 smtp_server.db "SELECT COUNT(*) FROM domains;" # Count domains
-sqlite3 smtp_server.db "SELECT COUNT(*) FROM users;"   # Count users
-sqlite3 smtp_server.db "SELECT COUNT(*) FROM whitelisted_ips;" # Count IPs
-```
-
-# Check recent email activity
-`sqlite3 smtp_server.db "SELECT mail_from, rcpt_tos, status, created_at FROM email_logs WHERE created_at > datetime('now', '-1 hour');"`

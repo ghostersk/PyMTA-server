@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Error - SMTP Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <h5 class="mb-0">Error Occurred</h5>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if error_code %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Error Code:</strong></div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-danger fs-6">{{ error_code }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if error_message %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Message:</strong></div>
+                    <div class="col-sm-9">
+                        <div class="alert alert-danger mb-0">
+                            {{ error_message }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if error_details %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Details:</strong></div>
+                    <div class="col-sm-9">
+                        <div class="bg-dark text-light p-3 rounded">
+                            <pre class="mb-0"><code>{{ error_details }}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Timestamp:</strong></div>
+                    <div class="col-sm-9">
+                        <span class="text-muted">{{ current_time.strftime('%Y-%m-%d %H:%M:%S') if current_time else 'Unknown' }}</span>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-sm-3"><strong>Request URL:</strong></div>
+                    <div class="col-sm-9">
+                        <code>{{ request.url if request else 'Unknown' }}</code>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{{ url_for('email.dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-home me-1"></i>
+                            Return to Dashboard
+                        </a>
+                        <button onclick="history.back()" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Go Back
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-light" onclick="copyErrorDetails()">
+                            <i class="fas fa-copy me-1"></i>
+                            Copy Error Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Common Error Solutions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Common Solutions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Database Issues:</h6>
+                        <ul class="text-muted small">
+                            <li>Check database connection settings</li>
+                            <li>Verify database tables exist</li>
+                            <li>Check database permissions</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Configuration Issues:</h6>
+                        <ul class="text-muted small">
+                            <li>Verify settings.ini file exists</li>
+                            <li>Check file permissions</li>
+                            <li>Validate configuration values</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Network Issues:</h6>
+                        <ul class="text-muted small">
+                            <li>Check firewall settings</li>
+                            <li>Verify DNS resolution</li>
+                            <li>Test network connectivity</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Permission Issues:</h6>
+                        <ul class="text-muted small">
+                            <li>Check file system permissions</li>
+                            <li>Verify user authentication</li>
+                            <li>Review access controls</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyErrorDetails() {
+    const errorDetails = {
+        code: '{{ error_code or "Unknown" }}',
+        message: '{{ error_message or "No message" }}',
+        details: `{{ error_details or "No details" }}`,
+        timestamp: '{{ current_time.strftime("%Y-%m-%d %H:%M:%S") if current_time else "Unknown" }}',
+        url: '{{ request.url if request else "Unknown" }}'
+    };
+    
+    const errorText = `Error Report:
+Code: ${errorDetails.code}
+Message: ${errorDetails.message}
+Details: ${errorDetails.details}
+Time: ${errorDetails.timestamp}
+URL: ${errorDetails.url}`;
+    
+    navigator.clipboard.writeText(errorText).then(() => {
+        // Show success message
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        btn.classList.remove('btn-outline-light');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-light');
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy error details to clipboard');
+    });
+}
+</script>
+{% endblock %}
