@@ -49,16 +49,22 @@ class EnhancedCombinedAuthenticator:
         self.user_auth = EnhancedAuthenticator()
         self.ip_auth = EnhancedIPAuthenticator()
     
-    def __call__(self, server, session, envelope, mechanism, auth_data):
+    async def __call__(self, server, session, envelope, mechanism, auth_data):
         from aiosmtpd.smtp import LoginPassword
         
         # If auth_data is provided (username/password), try user authentication first
         if auth_data and isinstance(auth_data, LoginPassword):
-            result = self.user_auth(server, session, envelope, mechanism, auth_data)
-            if result.success:
-                return result
-            # If user auth fails, don't try IP auth - return the failure
-            return result
+            try:
+                result = self.user_auth(server, session, envelope, mechanism, auth_data)
+                if result.success:
+                    return result
+                # If user auth fails, send immediate response
+                await server.push('535 Authentication failed')
+                return AuthResult(success=False, handled=True)
+            except Exception as e:
+                logger.error(f"Authentication error: {e}")
+                await server.push('535 Authentication failed')
+                return AuthResult(success=False, handled=True)
         
         # If no auth_data provided, IP auth will be validated during MAIL FROM
         # For now, allow the connection to proceed

@@ -21,16 +21,21 @@
                                id="ip_address" 
                                name="ip_address" 
                                value="{{ ip_record.ip_address }}"
-                               placeholder="e.g., 192.168.1.1 or 192.168.1.0/24"
+                               placeholder="e.g., 192.168.1.1"
                                required>
                         <div class="form-text">
-                            Enter a single IP address or CIDR block
+                            Enter a single IP address
                         </div>
                     </div>
-                    
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" id="global_ip" name="global_ip" {% if ip_record.global_ip %}checked{% endif %}>
+                        <label class="form-check-label" for="global_ip">
+                            Global IP (allow for any domain)
+                        </label>
+                    </div>
                     <div class="mb-3">
                         <label for="domain_id" class="form-label">Domain</label>
-                        <select class="form-select" id="domain_id" name="domain_id" required>
+                        <select class="form-select" id="domain_id" name="domain_id" {% if ip_record.global_ip %}disabled{% endif %} required>
                             <option value="">Select a domain</option>
                             {% for domain in domains %}
                                 <option value="{{ domain.id }}" 
@@ -40,7 +45,7 @@
                             {% endfor %}
                         </select>
                         <div class="form-text">
-                            This IP will be able to send emails for the selected domain
+                            This IP will be able to send emails for the selected domain (unless Global IP is checked)
                         </div>
                     </div>
                     
@@ -158,6 +163,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const parts = ip.split('/')[0].split('.');
         return parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255);
     }
+    
+    // Enable/disable domain select based on global_ip checkbox
+    const globalIpCheckbox = document.getElementById('global_ip');
+    const domainSelect = document.getElementById('domain_id');
+    function toggleDomainSelect() {
+        if (globalIpCheckbox.checked) {
+            domainSelect.disabled = true;
+        } else {
+            domainSelect.disabled = false;
+        }
+    }
+    globalIpCheckbox.addEventListener('change', toggleDomainSelect);
+    toggleDomainSelect();
 });
 </script>
 {% endblock %}

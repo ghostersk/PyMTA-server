@@ -88,16 +88,18 @@ class Sender(Base):
 
 class WhitelistedIP(Base):
     """
-    IP whitelist model with domain-specific authentication.
+    IP whitelist model with domain-specific and global authentication.
     
     Security feature:
-    - IPs can only send emails for their specific authorized domain
+    - IPs can be global (allowed for any domain) or domain-specific
+    - IPs can only send emails for their specific authorized domain unless global_ip is True
     """
     __tablename__ = 'esrv_whitelisted_ips'
     
     id = Column(Integer, primary_key=True)
     ip_address = Column(String, nullable=False)
-    domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=False)
+    domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=True)
+    global_ip = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     
@@ -107,13 +109,13 @@ class WhitelistedIP(Base):
         
         Args:
             domain_name: The domain name to check
-            
         Returns:
-            True if IP is authorized for this domain
+            True if IP is authorized for this domain or is global
         """
         if not self.is_active:
             return False
-            
+        if self.global_ip:
+            return True
         # Need to check against the actual domain
         session = Session()
         try:
@@ -126,7 +128,7 @@ class WhitelistedIP(Base):
             session.close()
     
     def __repr__(self):
-        return f"<WhitelistedIP(id={self.id}, ip='{self.ip_address}', domain_id={self.domain_id})>"
+        return f"<WhitelistedIP(id={self.id}, ip='{self.ip_address}', domain_id={self.domain_id}, global_ip={self.global_ip})>"
 
 class EmailLog(Base):
     """Email log model for tracking sent emails."""

@@ -21,7 +21,7 @@
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="bi bi-list me-2"></i>
-                        Whitelisted IP Addresses
+                        Per Domain Whitelisted IP Addresses
                     </h5>
                 </div>
                 <div class="card-body">
@@ -44,7 +44,11 @@
                                             <div class="fw-bold font-monospace">{{ ip.ip_address }}</div>
                                         </td>
                                         <td>
-                                            <span class="badge bg-secondary">{{ domain.domain_name }}</span>
+                                            {% if ip.global_ip %}
+                                                <span class="badge bg-info">Global</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ domain.domain_name }}</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             {% if ip.is_active %}
@@ -123,6 +127,97 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if global_ips %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list me-2"></i>
+                        Global Whitelisted IP Addresses <span class="text-muted small">(can be used for all domains)</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Status</th>
+                                    <th>Added</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ip, domain in global_ips %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold font-monospace">{{ ip.ip_address }}</div>
+                                    </td>
+                                    <td>
+                                        {% if ip.is_active %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Active
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-x-circle me-1"></i>
+                                                Inactive
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ ip.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <!-- Edit Button -->
+                                            <a href="{{ url_for('email.edit_ip', ip_id=ip.id) }}" 
+                                            class="btn btn-outline-primary btn-sm"
+                                            title="Edit IP">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <!-- Enable/Disable Button -->
+                                            {% if ip.is_active %}
+                                                <form method="post" action="{{ url_for('email.disable_ip', ip_id=ip.id) }}" class="d-inline">
+                                                    <button type="submit" 
+                                                            class="btn btn-outline-warning btn-sm"
+                                                            title="Disable IP"
+                                                            onclick="return confirm('Disable {{ ip.ip_address }}?')">
+                                                        <i class="bi bi-pause-circle"></i>
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="{{ url_for('email.enable_ip', ip_id=ip.id) }}" class="d-inline">
+                                                    <button type="submit" 
+                                                            class="btn btn-outline-success btn-sm"
+                                                            title="Enable IP"
+                                                            onclick="return confirm('Enable {{ ip.ip_address }}?')">
+                                                        <i class="bi bi-play-circle"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <!-- Permanent Remove Button -->
+                                            <form method="post" action="{{ url_for('email.remove_ip', ip_id=ip.id) }}" class="d-inline">
+                                                <button type="submit" 
+                                                        class="btn btn-outline-danger btn-sm"
+                                                        title="Permanently Remove IP"
+                                                        onclick="return confirm('Permanently remove {{ ip.ip_address }}? This cannot be undone!')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
         
         <div class="col-lg-4">
@@ -139,7 +234,7 @@
                         <ul class="list-unstyled mb-3">
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success me-2"></i>
-                                <strong>Active IPs:</strong> {{ ips|selectattr('0.is_active')|list|length }}
+                                <strong>Active IPs:</strong> {{ (ips|selectattr('0.is_active')|list|length) + (global_ips|selectattr('0.is_active')|list|length) }}
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-server text-info me-2"></i>
@@ -161,9 +256,10 @@
                         </h6>
                         <ul class="mb-0 small">
                             <li>Whitelisted IPs can send emails without username/password authentication</li>
-                            <li>Each IP is associated with a specific domain</li>
-                            <li>IP can only send emails for its authorized domain</li>
-                            <li>Useful for server-to-server email sending</li>
+                            <li>Per Domain IP associated with a specific domain</li>
+                            <li>Global IP can be used for all domains</li>
+                            <li>Global IP whitelisting only Domains added to server, if domain is not added, global IP will not work</li>
+                            <li>If IP is whitelisted, invalid username/password will still pass authentication</li>
                         </ul>
                     </div>
                 </div>
@@ -193,6 +289,7 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}

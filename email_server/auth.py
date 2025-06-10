@@ -29,10 +29,11 @@ class EnhancedAuthenticator:
     - Comprehensive audit logging
     """
     
-    def __call__(self, server, session, envelope, mechanism, auth_data):
+    async def __call__(self, server, session, envelope, mechanism, auth_data):
         if not isinstance(auth_data, LoginPassword):
             logger.warning(f'Invalid auth data format: {type(auth_data)}')
-            return AuthResult(success=False, handled=True, message='535 Authentication failed')
+            await server.push('535 Authentication failed')
+            return AuthResult(success=False, handled=True)
         
         # Decode bytes to string if necessary
         username = auth_data.login
@@ -73,7 +74,8 @@ class EnhancedAuthenticator:
                     message=f'Invalid credentials for {username}'
                 )
                 logger.warning(f'Authentication failed for {username}: invalid credentials')
-                return AuthResult(success=False, handled=True, message='535 Authentication failed')
+                await server.push('535 Authentication failed')
+                return AuthResult(success=False, handled=True)
             
         except Exception as e:
             logger.error(f'Authentication error for {username}: {e}')
@@ -84,7 +86,8 @@ class EnhancedAuthenticator:
                 success=False,
                 message=f'Authentication error: {str(e)}'
             )
-            return AuthResult(success=False, handled=True, message='451 Internal server error')
+            await server.push('535 Authentication failed')
+            return AuthResult(success=False, handled=True)
 
 class EnhancedIPAuthenticator:
     """
@@ -98,7 +101,7 @@ class EnhancedIPAuthenticator:
     
     def can_authenticate_for_domain(self, ip_address: str, domain_name: str) -> tuple[bool, str]:
         """
-        Check if IP can authenticate for a specific domain.
+        Check if IP can authenticate for a specific domain or is globally whitelisted.
         
         Args:
             ip_address: Client IP address
@@ -108,11 +111,25 @@ class EnhancedIPAuthenticator:
             (success, message) tuple
         """
         try:
+            # First, check for domain-specific whitelist
             whitelisted_ip = get_whitelisted_ip(ip_address, domain_name)
             if whitelisted_ip:
                 return True, f"IP {ip_address} authorized for domain {domain_name}"
-            else:
-                return False, f"IP {ip_address} not authorized for domain {domain_name}"
+            # Then, check for global whitelist
+            from email_server.models import Session, WhitelistedIP, get_domain_by_name
+            session = Session()
+            try:
+                global_ip = session.query(WhitelistedIP).filter_by(ip_address=ip_address, global_ip=True, is_active=True).first()
+                if global_ip:
+                    # Check if the domain exists and is active
+                    domain = get_domain_by_name(domain_name)
+                    if domain:
+                        return True, f"IP {ip_address} is globally whitelisted for existing domain {domain_name}"
+                    else:
+                        return False, f"Domain {domain_name} does not exist or is not active on this server"
+            finally:
+                session.close()
+            return False, f"IP {ip_address} not authorized for domain {domain_name} or globally"
         except Exception as e:
             logger.error(f"Error checking IP authorization: {e}")
             return False, f"Error checking IP authorization: {str(e)}"

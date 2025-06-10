@@ -40,30 +40,30 @@
                 <div class="card-body">
                     <form method="POST">
                         <div class="mb-3">
-                            <label for="ip_address" class="form-label">IP Address</label>
-                            <input type="text" 
-                                   class="form-control font-monospace" 
-                                   id="ip_address" 
-                                   name="ip_address" 
-                                   required 
-                                   pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-                                   placeholder="192.168.1.100"
-                                   value="{{ request.args.get('ip', '') }}">
+                            <label for="ip_addresses" class="form-label">IP Addresses</label>
+                            <textarea class="form-control font-monospace" id="ip_addresses" name="ip_addresses" rows="3" required placeholder="One IP per line, or separate with commas">{{ request.args.get('ip', '') }}</textarea>
                             <div class="form-text">
-                                IPv4 address that will be allowed to send emails without authentication
+                                Enter one or more IPv4 addresses (one per line or comma-separated).<br>
+                                Each IP will be added as a separate whitelist entry.
                             </div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" type="checkbox" id="global_ip" name="global_ip">
+                            <label class="form-check-label" for="global_ip">
+                                Global IP (allow for any domain)
+                            </label>
                         </div>
                         
                         <div class="mb-4">
                             <label for="domain_id" class="form-label">Authorized Domain</label>
-                            <select class="form-select" id="domain_id" name="domain_id" required>
+                            <select class="form-select" id="domain_id" name="domain_id">
                                 <option value="">Select a domain...</option>
                                 {% for domain in domains %}
                                 <option value="{{ domain.id }}">{{ domain.domain_name }}</option>
                                 {% endfor %}
                             </select>
                             <div class="form-text">
-                                This IP will only be able to send emails for the selected domain
+                                This IP will only be able to send emails for the selected domain (unless Global IP is checked)
                             </div>
                         </div>
                         
@@ -109,17 +109,10 @@
             const data = await response.json();
             document.getElementById('current-ip').innerHTML = 
                 `<span class="text-primary">${data.ip_addr}</span>`;
-        } catch (er) {
-            try {
-                const response = await fetch('https://httpbin.org/ip');
-                const data = await response.json();
-                document.getElementById('current-ip').innerHTML = 
-                    `<span class="text-primary">${data.origin}</span>`;
-            } catch (error) {
-                document.getElementById('current-ip').innerHTML = 
+        } catch (error) {
+            document.getElementById('current-ip').innerHTML = 
                 '<span class="text-muted">Unable to detect</span>';
         }
-    }
     }
     
     function useCurrentIP() {
@@ -127,7 +120,7 @@
         const ip = currentIPElement.textContent.trim();
         
         if (ip && ip !== 'Detecting...' && ip !== 'Unable to detect') {
-            document.getElementById('ip_address').value = ip;
+            document.getElementById('ip_addresses').value = ip;
             // Focus on domain selection
             document.getElementById('domain_id').focus();
         } else {
@@ -135,19 +128,22 @@
         }
     }
     
-    // IP address validation
-    document.getElementById('ip_address').addEventListener('input', function(e) {
-        const ip = e.target.value;
-        const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        
-        if (ip && !ipPattern.test(ip)) {
-            e.target.setCustomValidity('Please enter a valid IPv4 address');
-        } else {
-            e.target.setCustomValidity('');
-        }
-    });
-    
     // Auto-detect IP on page load
     detectCurrentIP();
+
+    // Enable/disable domain select based on global_ip checkbox
+    const globalIpCheckbox = document.getElementById('global_ip');
+    const domainSelect = document.getElementById('domain_id');
+    function toggleDomainSelect() {
+        if (globalIpCheckbox.checked) {
+            domainSelect.disabled = true;
+            domainSelect.required = false;
+        } else {
+            domainSelect.disabled = false;
+            domainSelect.required = true;
+        }
+    }
+    globalIpCheckbox.addEventListener('change', toggleDomainSelect);
+    toggleDomainSelect();
 </script>
 {% endblock %}
