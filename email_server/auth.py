@@ -11,8 +11,8 @@ Security Features:
 from datetime import datetime
 from aiosmtpd.smtp import AuthResult, LoginPassword
 from email_server.models import (
-    Session, User, Domain, WhitelistedIP, 
-    check_password, log_auth_attempt, get_user_by_email, 
+    Session, Sender, Domain, WhitelistedIP, 
+    check_password, log_auth_attempt, get_sender_by_email, 
     get_whitelisted_ip, get_domain_by_name
 )
 from email_server.tool_box import get_logger
@@ -47,42 +47,38 @@ class EnhancedAuthenticator:
         logger.debug(f'Authentication attempt: {username} from {peer_ip}')
         
         try:
-            # Look up user in database
-            user = get_user_by_email(username)
-            
-            if user and check_password(password, user.password_hash):
-                # Store authenticated user info in session for later validation
-                session.authenticated_user = user
-                session.auth_type = 'user'
-                
+            # Look up sender in database
+            sender = get_sender_by_email(username)
+            if sender and check_password(password, sender.password_hash):
+                # Store authenticated sender info in session for later validation
+                session.authenticated_sender = sender
+                session.auth_type = 'sender'
                 # Log successful authentication
                 log_auth_attempt(
-                    auth_type='user',
+                    auth_type='sender',
                     identifier=username,
                     ip_address=peer_ip,
                     success=True,
-                    message=f'Successful user authentication'
+                    message=f'Successful sender authentication'
                 )
-                
-                logger.info(f'Authenticated user: {username} (ID: {user.id}, can_send_as_domain: {user.can_send_as_domain})')
+                logger.info(f'Authenticated sender: {username} (ID: {sender.id}, can_send_as_domain: {sender.can_send_as_domain})')
                 return AuthResult(success=True, handled=True)
             else:
                 # Log failed authentication
                 log_auth_attempt(
-                    auth_type='user',
+                    auth_type='sender',
                     identifier=username,
                     ip_address=peer_ip,
                     success=False,
                     message=f'Invalid credentials for {username}'
                 )
-                
                 logger.warning(f'Authentication failed for {username}: invalid credentials')
                 return AuthResult(success=False, handled=True, message='535 Authentication failed')
             
         except Exception as e:
             logger.error(f'Authentication error for {username}: {e}')
             log_auth_attempt(
-                auth_type='user',
+                auth_type='sender',
                 identifier=username,
                 ip_address=peer_ip,
                 success=False,
@@ -145,19 +141,18 @@ def validate_sender_authorization(session, mail_from: str) -> tuple[bool, str]:
     
     peer_ip = session.peer[0]
     
-    # Check user authentication
-    if hasattr(session, 'authenticated_user') and session.authenticated_user:
-        user = session.authenticated_user
-        
-        if user.can_send_as(mail_from):
-            logger.info(f"User {user.email} authorized to send as {mail_from}")
-            return True, f"User authorized to send as {mail_from}"
+    # Check sender authentication
+    if hasattr(session, 'authenticated_sender') and session.authenticated_sender:
+        sender = session.authenticated_sender
+        if sender.can_send_as(mail_from):
+            logger.info(f"Sender {sender.email} authorized to send as {mail_from}")
+            return True, f"Sender authorized to send as {mail_from}"
         else:
-            message = f"User {user.email} not authorized to send as {mail_from}"
+            message = f"Sender {sender.email} not authorized to send as {mail_from}"
             logger.warning(message)
             log_auth_attempt(
                 auth_type='sender_validation',
-                identifier=f"{user.email} -> {mail_from}",
+                identifier=f"{sender.email} -> {mail_from}",
                 ip_address=peer_ip,
                 success=False,
                 message=message
@@ -205,8 +200,8 @@ def get_authenticated_domain_id(session) -> int:
     Returns:
         Domain ID or None if not authenticated
     """
-    if hasattr(session, 'authenticated_user') and session.authenticated_user:
-        return session.authenticated_user.domain_id
+    if hasattr(session, 'authenticated_sender') and session.authenticated_sender:
+        return session.authenticated_sender.domain_id
     
     if hasattr(session, 'authorized_domain') and session.authorized_domain:
         domain = get_domain_by_name(session.authorized_domain)

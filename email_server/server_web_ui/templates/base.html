@@ -131,6 +131,20 @@
     <!-- Custom SMTP Management CSS -->
     <link href="{{ url_for('email.static', filename='css/smtp-management.css') }}" rel="stylesheet">
     
+    <style>
+        /* Ensure tooltip text is visible on dark backgrounds */
+        .tooltip-inner {
+            color: #fff !important;
+            background-color: #222 !important;
+            font-size: 1rem;
+            text-align: left;
+        }
+        .bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before,
+        .bs-tooltip-top .tooltip-arrow::before {
+            border-top-color: #222 !important;
+        }
+    </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -336,6 +350,16 @@
     
     <!-- Custom SMTP Management JavaScript -->
     <script src="{{ url_for('email.static', filename='js/smtp-management.js') }}"></script>
+    
+    <!-- Bootstrap Tooltip Initialization -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

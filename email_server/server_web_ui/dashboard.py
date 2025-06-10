@@ -5,7 +5,7 @@ This module provides the main dashboard view and overview functionality.
 """
 
 from flask import render_template
-from email_server.models import Session, Domain, User, DKIMKey, EmailLog, AuthLog
+from email_server.models import Session, Domain, Sender, DKIMKey, EmailLog, AuthLog
 from email_server.tool_box import get_logger
 from .routes import email_bp
 
@@ -19,7 +19,7 @@ def dashboard():
     try:
         # Get counts
         domain_count = session.query(Domain).filter_by(is_active=True).count()
-        user_count = session.query(User).filter_by(is_active=True).count()
+        sender_count = session.query(Sender).filter_by(is_active=True).count()
         dkim_count = session.query(DKIMKey).filter_by(is_active=True).count()
         
         # Get recent email logs
@@ -30,7 +30,7 @@ def dashboard():
         
         return render_template('dashboard.html',
                              domain_count=domain_count,
-                             user_count=user_count,
+                             sender_count=sender_count,
                              dkim_count=dkim_count,
                              recent_emails=recent_emails,
                              recent_auths=recent_auths)

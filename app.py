@@ -31,7 +31,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import SMTP server components
 from email_server.server_runner import start_server
-from email_server.models import create_tables, Session, Domain, User, WhitelistedIP, DKIMKey, hash_password
+from email_server.models import create_tables, Session, Domain, Sender, WhitelistedIP, DKIMKey, hash_password
 from email_server.settings_loader import load_settings
 from email_server.tool_box import get_logger
 from email_server.dkim_manager import DKIMManager
@@ -91,7 +91,7 @@ class SMTPServerApp:
         db = SQLAlchemy(app)
         
         # Import existing models and register them with Flask-SQLAlchemy
-        from email_server.models import Base, Domain, User, WhitelistedIP, DKIMKey, EmailLog, AuthLog, CustomHeader
+        from email_server.models import Base, Domain, Sender, WhitelistedIP, DKIMKey, EmailLog, AuthLog, CustomHeader
         # Set the metadata for Flask-Migrate to use existing models
         db.Model.metadata = Base.metadata
         
@@ -109,71 +109,7 @@ class SMTPServerApp:
         def index():
             """Redirect root to email dashboard"""
             return redirect(url_for('email.dashboard'))
-        
-        @app.route('/health')
-        def health_check():
-            """Health check endpoint"""
-            return jsonify({
-                'status': 'healthy',
-                'timestamp': datetime.now(ZoneInfo('Europe/London')).isoformat(),
-                'services': {
-                    'smtp_server': 'running' if self.smtp_task and not self.smtp_task.done() else 'stopped',
-                    'web_frontend': 'running'
-                },
-                'version': '1.0.0'
-            })
-        
-        @app.route('/api/server/status')
-        def server_status():
-            """Get detailed server status"""
-            session = Session()
-            try:
-                status = {
-                    'smtp_server': {
-                        'running': self.smtp_task and not self.smtp_task.done(),
-                        'port': int(self.settings.get('Server', 'SMTP_PORT', fallback=25)),
-                        'tls_port': int(self.settings.get('Server', 'SMTP_TLS_PORT', fallback=587)),
-                        'hostname': self.settings.get('Server', 'hostname', fallback='localhost')
-                    },
-                    'database': {
-                        'domains': session.query(Domain).filter_by(is_active=True).count(),
-                        'users': session.query(User).filter_by(is_active=True).count(),
-                        'dkim_keys': session.query(DKIMKey).filter_by(is_active=True).count(),
-                        'whitelisted_ips': session.query(WhitelistedIP).filter_by(is_active=True).count()
-                    },
-                    'settings': {
-                        'relay_enabled': self.settings.getboolean('Relay', 'enable_relay', fallback=False),
-                        'tls_enabled': self.settings.getboolean('TLS', 'enable_tls', fallback=True),
-                        'dkim_enabled': self.settings.getboolean('DKIM', 'enable_dkim', fallback=True)
-                    }
-                }
-                return jsonify(status)
-            finally:
-                session.close()
-        
-        @app.route('/api/server/restart', methods=['POST'])
-        def restart_server():
-            """Restart the SMTP server (API endpoint) via systemd."""
-            try:
-                # Only allow from localhost for security
-                if request.remote_addr not in ('127.0.0.1', '::1'):
-                    return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
 
-                # Restart the systemd service for SMTP (update service name as needed)
-                result = subprocess.run(
-                    ['systemctl', '--user', 'restart', 'pymta-smtp.service'],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-                if result.returncode == 0:
-                    return jsonify({'status': 'success', 'message': 'SMTP server restart requested.'})
-                else:
-                    return jsonify({'status': 'error', 'message': f'Failed to restart: {result.stderr}'}), 500
-            except Exception as e:
-                logger.error(f"Error restarting server: {e}")
-                return jsonify({'status': 'error', 'message': str(e)}), 500
-        
         # Error handlers
         @app.errorhandler(404)
         def not_found_error(error):
@@ -192,6 +128,11 @@ class SMTPServerApp:
                                  error_message="Internal server error",
                                  error_details=str(error)), 500
         
+        @app.route('/health')
+        def health_check():
+            """Health check endpoint"""
+            return jsonify(self.check_health())
+        
         # Context processors for templates
         @app.context_processor
         def utility_processor():
@@ -203,6 +144,7 @@ class SMTPServerApp:
                 'zip': zip,
                 'str': str,
                 'int': int,
+                'check_health': self.check_health
             }
         
         self.flask_app = app
@@ -235,24 +177,24 @@ class SMTPServerApp:
                 for domain_name in sample_domains:
                     dkim_manager.generate_dkim_keypair(domain_name)
                 
-                # Add sample users
-                sample_users = [
+                # Add sample senders
+                sample_senders = [
                     ('admin@example.com', 'example.com', 'admin123', False),
                 ]
                 
-                for email, domain_name, password, can_send_as_domain in sample_users:
-                    existing = session.query(User).filter_by(email=email).first()
+                for email, domain_name, password, can_send_as_domain in sample_senders:
+                    existing = session.query(Sender).filter_by(email=email).first()
                     if not existing:
                         domain = session.query(Domain).filter_by(domain_name=domain_name).first()
                         if domain:
-                            user = User(
+                            sender = Sender(
                                 email=email,
                                 password_hash=hash_password(password),
                                 domain_id=domain.id,
                                 can_send_as_domain=can_send_as_domain
                             )
-                            session.add(user)
-                            logger.info(f"Added sample user: {email}")
+                            session.add(sender)
+                            logger.info(f"Added sample sender: {email}")
                 
                 # Add sample whitelisted IPs
                 sample_ips = [
@@ -373,6 +315,42 @@ class SMTPServerApp:
             logger.info("Application interrupted by user")
         finally:
             self.shutdown_requested = True
+
+    def check_health(self):
+        """Check the health of all services"""
+        status = {
+            'status': 'healthy',
+            'timestamp': datetime.now(ZoneInfo('Europe/London')).isoformat(),
+            'services': {
+                'smtp_server': 'running' if self.smtp_task and not self.smtp_task.done() else 'stopped',
+                'web_frontend': 'running',
+                'database': 'ok'
+            },
+            'version': '1.0.0'
+        }
+        
+        # Check database connection
+        try:
+            session = Session()
+            # Try to query a simple table to verify connection
+            session.query(Domain).first()
+            session.close()
+        except Exception as e:
+            status['services']['database'] = 'error'
+            status['status'] = 'degraded'
+            logger.error(f"Database health check failed: {e}")
+            # Try to reconnect to database
+            try:
+                create_tables()
+                logger.info("Database reconnection attempted")
+            except Exception as reconnect_error:
+                logger.error(f"Database reconnection failed: {reconnect_error}")
+        
+        # If any service is not running, set overall status to degraded
+        if status['services']['smtp_server'] == 'stopped' or status['services']['database'] == 'error':
+            status['status'] = 'degraded'
+        
+        return status
 
 
 def main():

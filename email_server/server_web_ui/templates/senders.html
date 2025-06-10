@@ -76,7 +76,7 @@
         </h5>
     </div>
     <div class="card-body p-0">
-        {% if users %}
+        {% if senders %}
             <div class="table-responsive">
                 <table class="table table-dark table-hover mb-0">
                     <thead>
@@ -90,16 +90,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user, domain in users %}
+                        {% for sender, domain in senders %}
                         <tr>
                             <td>
-                                <div class="fw-bold">{{ user.email }}</div>
+                                <div class="fw-bold">{{ sender.email }}</div>
                             </td>
                             <td>
                                 <span class="badge bg-secondary">{{ domain.domain_name }}</span>
                             </td>
                             <td>
-                                {% if user.can_send_as_domain %}
+                                {% if sender.can_send_as_domain %}
                                     <span class="badge bg-warning"  style="color: black;">
                                         <i class="bi bi-star me-1"></i>
                                         Domain Sender
@@ -112,11 +112,11 @@
                                         Regular Sender
                                     </span>
                                     <br>
-                                    <small class="text-muted">Can only send as {{ user.email }}</small>
+                                    <small class="text-muted">Can only send as {{ sender.email }}</small>
                                 {% endif %}
                             </td>
                             <td>
-                                {% if user.is_active %}
+                                {% if sender.is_active %}
                                     <span class="badge bg-success">
                                         <i class="bi bi-check-circle me-1"></i>
                                         Active
@@ -130,45 +130,45 @@
                             </td>
                             <td>
                                 <small class="text-muted">
-                                    {{ user.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {{ sender.created_at.strftime('%Y-%m-%d %H:%M') }}
                                 </small>
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
                                     <!-- Edit Button -->
-                                    <a href="{{ url_for('email.edit_sender', user_id=user.id) }}" 
+                                    <a href="{{ url_for('email.edit_sender', user_id=sender.id) }}" 
                                        class="btn btn-outline-primary btn-sm"
                                        title="Edit Sender">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     
                                     <!-- Enable/Disable Button -->
-                                    {% if user.is_active %}
-                                        <form method="post" action="{{ url_for('email.delete_sender', user_id=user.id) }}" class="d-inline">
+                                    {% if sender.is_active %}
+                                        <form method="post" action="{{ url_for('email.delete_sender', user_id=sender.id) }}" class="d-inline">
                                             <button type="submit" 
                                                     class="btn btn-outline-warning btn-sm"
                                                     title="Disable Sender"
-                                                    onclick="return confirm('Disable user {{ user.email }}?')">
+                                                    onclick="return confirm('Disable user {{ sender.email }}?')">
                                                 <i class="bi bi-pause-circle"></i>
                                             </button>
                                         </form>
                                     {% else %}
-                                        <form method="post" action="{{ url_for('email.enable_sender', user_id=user.id) }}" class="d-inline">
+                                        <form method="post" action="{{ url_for('email.enable_sender', user_id=sender.id) }}" class="d-inline">
                                             <button type="submit" 
                                                     class="btn btn-outline-success btn-sm"
                                                     title="Enable Sender"
-                                                    onclick="return confirm('Enable user {{ user.email }}?')">
+                                                    onclick="return confirm('Enable user {{ sender.email }}?')">
                                                 <i class="bi bi-play-circle"></i>
                                             </button>
                                         </form>
                                     {% endif %}
                                     
                                     <!-- Permanent Remove Button -->
-                                    <form method="post" action="{{ url_for('email.remove_sender', user_id=user.id) }}" class="d-inline">
+                                    <form method="post" action="{{ url_for('email.remove_sender', user_id=sender.id) }}" class="d-inline">
                                         <button type="submit" 
                                                 class="btn btn-outline-danger btn-sm"
                                                 title="Permanently Remove Sender"
-                                                onclick="return confirm('Permanently remove user {{ user.email }}? This cannot be undone!')">
+                                                onclick="return confirm('Permanently remove user {{ sender.email }}? This cannot be undone!')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>

@@ -432,11 +432,22 @@ def check_spf_dns():
                 spf_record = record
                 break
     
+    spf_valid_for_server = False
+    spf_check_message = ''
+    public_ip = get_public_ip()
+    ip_mechanism = f'ip4:{public_ip}'
     if spf_record:
         result['spf_record'] = spf_record
+        if ip_mechanism in spf_record:
+            spf_valid_for_server = True
+            spf_check_message = f'SPF is valid for this server (contains {ip_mechanism})'
+        else:
+            spf_check_message = f'SPF is missing this server\'s IP ({ip_mechanism})'
         result['message'] = 'SPF record found'
     else:
         result['success'] = False
         result['message'] = 'No SPF record found'
-    
+    result['spf_valid_for_server'] = spf_valid_for_server
+    result['spf_check_message'] = spf_check_message
+    result['public_ip'] = public_ip
     return jsonify(result)

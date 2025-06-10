@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Edit User - SMTP Management{% endblock %}
+{% block title %}Edit Sender - SMTP Management{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -9,7 +9,7 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="bi bi-person-fill-gear me-2"></i>
-                    Edit User
+                    Edit Sender
                 </h5>
             </div>
             <div class="card-body">
@@ -20,7 +20,7 @@
                                class="form-control" 
                                id="email" 
                                name="email" 
-                               value="{{ user.email }}"
+                               value="{{ sender.email }}"
                                required>
                     </div>
                     
@@ -42,7 +42,7 @@
                             <option value="">Select a domain</option>
                             {% for domain in domains %}
                                 <option value="{{ domain.id }}" 
-                                        {% if domain.id == user.domain_id %}selected{% endif %}>
+                                        {% if domain.id == sender.domain_id %}selected{% endif %}>
                                     {{ domain.domain_name }}
                                 </option>
                             {% endfor %}
@@ -55,12 +55,12 @@
                                    type="checkbox" 
                                    id="can_send_as_domain" 
                                    name="can_send_as_domain"
-                                   {% if user.can_send_as_domain %}checked{% endif %}>
+                                   {% if sender.can_send_as_domain %}checked{% endif %}>
                             <label class="form-check-label" for="can_send_as_domain">
                                 <strong>Can send as any email from domain</strong>
                             </label>
                             <div class="form-text">
-                                Allow this user to send emails using any address within their domain
+                                Allow this sender to send emails using any address within their domain
                             </div>
                         </div>
                     </div>
@@ -68,7 +68,7 @@
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i>
-                            Update User
+                            Update Sender
                         </button>
                         <a href="{{ url_for('email.senders_list') }}" class="btn btn-secondary">
                             <i class="bi bi-x-lg me-1"></i>
@@ -85,26 +85,26 @@
             <div class="card-header">
                 <h6 class="mb-0">
                     <i class="bi bi-info-circle me-2"></i>
-                    Current User Details
+                    Current Sender Details
                 </h6>
             </div>
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-4">Email:</dt>
                     <dd class="col-sm-8">
-                        <code>{{ user.email }}</code>
+                        <code>{{ sender.email }}</code>
                     </dd>
                     <dt class="col-sm-4">Domain:</dt>
                     <dd class="col-sm-8">
                         {% for domain in domains %}
-                            {% if domain.id == user.domain_id %}
+                            {% if domain.id == sender.domain_id %}
                                 <span class="badge bg-secondary">{{ domain.domain_name }}</span>
                             {% endif %}
                         {% endfor %}
                     </dd>
                     <dt class="col-sm-4">Status:</dt>
                     <dd class="col-sm-8">
-                        {% if user.is_active %}
+                        {% if sender.is_active %}
                             <span class="badge bg-success">
                                 <i class="bi bi-check-circle me-1"></i>
                                 Active
@@ -118,7 +118,7 @@
                     </dd>
                     <dt class="col-sm-4">Domain Sender:</dt>
                     <dd class="col-sm-8">
-                        {% if user.can_send_as_domain %}
+                        {% if sender.can_send_as_domain %}
                             <span class="badge bg-success">
                                 <i class="bi bi-check-circle me-1"></i>
                                 Yes
@@ -133,7 +133,7 @@
                     <dt class="col-sm-4">Created:</dt>
                     <dd class="col-sm-8">
                         <small class="text-muted">
-                            {{ user.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            {{ sender.created_at.strftime('%Y-%m-%d %H:%M') }}
                         </small>
                     </dd>
                 </dl>
@@ -144,7 +144,7 @@
             <div class="card-header">
                 <h6 class="mb-0">
                     <i class="bi bi-shield-check me-2"></i>
-                    User Permissions
+                    Sender Permissions
                 </h6>
             </div>
             <div class="card-body">
@@ -154,8 +154,8 @@
                         Domain Sender Permission
                     </h6>
                     <ul class="mb-0 small">
-                        <li><strong>Enabled:</strong> User can send emails using any address in their domain (e.g., admin@domain.com, support@domain.com)</li>
-                        <li><strong>Disabled:</strong> User can only send emails from their own email address</li>
+                        <li><strong>Enabled:</strong> Sender can send emails using any address in their domain (e.g., admin@domain.com, support@domain.com)</li>
+                        <li><strong>Disabled:</strong> Sender can only send emails from their own email address</li>
                     </ul>
                 </div>
             </div>

@@ -38,7 +38,7 @@ class Domain(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Add relationships with proper foreign key references
-    users = relationship("User", backref="domain", lazy="joined")
+    senders = relationship("Sender", backref="domain", lazy="joined")
     dkim_keys = relationship("DKIMKey", backref="domain", lazy="joined")
     whitelisted_ips = relationship("WhitelistedIP", backref="domain", lazy="joined")
     custom_headers = relationship("CustomHeader", backref="domain", lazy="joined")
@@ -46,15 +46,15 @@ class Domain(Base):
     def __repr__(self):
         return f"<Domain(id={self.id}, domain_name='{self.domain_name}', active={self.is_active})>"
 
-class User(Base):
+class Sender(Base):
     """
-    User model with enhanced authentication controls.
+    Sender model with enhanced authentication controls.
     
     Security features:
-    - can_send_as_domain: If True, user can send as any email from their domain
-    - If False, user can only send as their own email address
+    - can_send_as_domain: If True, sender can send as any email from their domain
+    - If False, sender can only send as their own email address
     """
-    __tablename__ = 'esrv_users'
+    __tablename__ = 'esrv_senders'
     
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False)
@@ -66,28 +66,25 @@ class User(Base):
     
     def can_send_as(self, from_address: str) -> bool:
         """
-        Check if this user can send emails as the given from_address.
+        Check if this sender can send emails as the given from_address.
         
         Args:
-            from_address: The email address the user wants to send from
-            
+            from_address: The email address the sender wants to send from
         Returns:
-            True if user is allowed to send as this address
+            True if sender is allowed to send as this address
         """
-        # User can always send as their own email
+        # Sender can always send as their own email
         if from_address.lower() == self.email.lower():
             return True
-            
-        # If user has domain privileges, check if from_address is from same domain
+        # If sender has domain privileges, check if from_address is from same domain
         if self.can_send_as_domain:
-            user_domain = self.email.split('@')[1].lower()
+            sender_domain = self.email.split('@')[1].lower()
             from_domain = from_address.split('@')[1].lower() if '@' in from_address else ''
-            return user_domain == from_domain
-            
+            return sender_domain == from_domain
         return False
     
     def __repr__(self):
-        return f"<User(id={self.id}, email='{self.email}', domain_id={self.domain_id}, can_send_as_domain={self.can_send_as_domain})>"
+        return f"<Sender(id={self.id}, email='{self.email}', domain_id={self.domain_id}, can_send_as_domain={self.can_send_as_domain})>"
 
 class WhitelistedIP(Base):
     """
@@ -276,11 +273,11 @@ def log_email(from_address: str, to_address: str, subject: str,
     finally:
         session.close()
 
-def get_user_by_email(email: str):
-    """Get user by email address."""
+def get_sender_by_email(email: str):
+    """Get sender by email address."""
     session = Session()
     try:
-        return session.query(User).filter_by(email=email.lower(), is_active=True).first()
+        return session.query(Sender).filter_by(email=email.lower(), is_active=True).first()
     finally:
         session.close()
 
