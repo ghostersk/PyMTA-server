@@ -5,6 +5,8 @@ Utility functions for the email server.
 import os
 import logging
 from email_server.settings_loader import load_settings
+from datetime import datetime
+import pytz
 
 settings = load_settings()
 
@@ -57,3 +59,8 @@ def get_logger(name=None):
         else:
             name = '__main__'
     return logging.getLogger(name)
+
+def get_current_time():
+    """Get current time with timezone from settings."""
+    timezone = pytz.timezone(settings['Server'].get('time_zone', 'UTC'))
+    return datetime.now(timezone)

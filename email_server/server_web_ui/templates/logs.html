@@ -16,16 +16,9 @@
     .log-error { border-left-color: #dc3545; }
     .log-success { border-left-color: #198754; }
     .log-failed { border-left-color: #dc3545; }
+    .log-partial { border-left-color: #fd7e14; } /* Orange for partial fail */
     
-    .log-content {
-        font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
-        background-color: var(--bs-gray-100);
-        border-radius: 0.25rem;
-        padding: 0.5rem;
-        max-height: 150px;
-        overflow-y: auto;
-    }
+    /* Message display styles are now in view_message_content.html */
 </style>
 {% endblock %}
 
@@ -83,11 +76,30 @@
                             {% for log_entry in logs %}
                                 {% if log_entry.type == 'email' %}
                                     {% set log = log_entry.data %}
-                                    <div class="log-entry log-email log-{{ 'success' if log.status == 'relayed' else 'failed' }}">
+                                    {% set recipients = log_entry.recipients %}
+                                    {% set delivered = recipients|selectattr('status', 'equalto', 'success')|list %}
+                                    {% set failed = recipients|selectattr('status', 'ne', 'success')|list %}
+                                    {% if delivered and failed %}
+                                        {% set overall_status = 'partial' %}
+                                    {% elif delivered %}
+                                        {% set overall_status = 'relayed' %}
+                                    {% else %}
+                                        {% set overall_status = 'failed' %}
+                                    {% endif %}
+                                    <div class="log-entry log-email log-{% if overall_status == 'relayed' %}success{% elif overall_status == 'partial' %}partial{% else %}failed{% endif %}">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <div>
                                                 <span class="badge bg-primary me-2">EMAIL</span>
-                                                <strong>{{ log.mail_from }}</strong> → {{ log.rcpt_tos }}
+                                                <strong>{{ log.mail_from }}</strong>
+                                                {% if log.to_address %}
+                                                    → <span class="text-primary">To:</span> {{ log.to_address }}
+                                                {% endif %}
+                                                {% if log.cc_addresses %}
+                                                    <br><span class="ms-4 text-info">CC:</span> {{ log.cc_addresses }}
+                                                {% endif %}
+                                                {% if log.bcc_addresses %}
+                                                    <br><span class="ms-4 text-warning">BCC:</span> {{ log.bcc_addresses }}
+                                                {% endif %}
                                                 {% if log.dkim_signed %}
                                                     <span class="badge bg-success ms-2">
                                                         <i class="bi bi-shield-check me-1"></i>
@@ -95,13 +107,15 @@
                                                     </span>
                                                 {% endif %}
                                             </div>
-                                            <small class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                            <small class="text-muted">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <strong>Status:</strong> 
-                                                {% if log.status == 'relayed' %}
+                                                {% if overall_status == 'relayed' %}
                                                     <span class="text-success">Sent Successfully</span>
+                                                {% elif overall_status == 'partial' %}
+                                                    <span class="text-warning">Partial Fail</span>
                                                 {% else %}
                                                     <span class="text-danger">Failed</span>
                                                 {% endif %}
@@ -115,6 +129,11 @@
                                             <strong>Subject:</strong> {{ log.subject }}
                                         </div>
                                         {% endif %}
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('email.view_message_content', log_id=log.id) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-envelope-open-text"></i> View Message Details
+                                            </a>
+                                        </div>
                                     </div>
                                 {% else %}
                                     {% set log = log_entry.data %}
@@ -127,7 +146,7 @@
                                                     {{ 'Success' if log.success else 'Failed' }}
                                                 </span>
                                             </div>
-                                            <small class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                            <small class="text-muted">{{ log.created_at|format_datetime }}</small>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6">
@@ -148,10 +167,28 @@
                         {% elif filter_type == 'emails' %}
                             <!-- Email logs only -->
                             {% for log in logs %}
-                                <div class="log-entry log-email log-{{ 'success' if log.status == 'relayed' else 'failed' }}">
+                                {% set delivered = recipient_logs_map[log.id]|selectattr('status', 'equalto', 'success')|list %}
+                                {% set failed = recipient_logs_map[log.id]|selectattr('status', 'ne', 'success')|list %}
+                                {% if delivered and failed %}
+                                    {% set overall_status = 'partial' %}
+                                {% elif delivered %}
+                                    {% set overall_status = 'relayed' %}
+                                {% else %}
+                                    {% set overall_status = 'failed' %}
+                                {% endif %}
+                                <div class="log-entry log-email log-{{ overall_status }}">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
-                                            <strong>{{ log.mail_from }}</strong> → {{ log.rcpt_tos }}
+                                            <strong>{{ log.mail_from }}</strong>
+                                            {% if log.to_address %}
+                                                → <span class="text-primary">To:</span> {{ log.to_address }}
+                                            {% endif %}
+                                            {% if log.cc_addresses %}
+                                                <br><span class="ms-4 text-info">CC:</span> {{ log.cc_addresses }}
+                                            {% endif %}
+                                            {% if log.bcc_addresses %}
+                                                <br><span class="ms-4 text-warning">BCC:</span> {{ log.bcc_addresses }}
+                                            {% endif %}
                                             {% if log.dkim_signed %}
                                                 <span class="badge bg-success ms-2">
                                                     <i class="bi bi-shield-check me-1"></i>
@@ -159,24 +196,64 @@
                                                 </span>
                                             {% endif %}
                                         </div>
-                                        <small class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                        <small class="text-muted">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-3">
                                             <strong>Status:</strong> 
-                                            {% if log.status == 'relayed' %}
+                                            {% if overall_status == 'relayed' %}
                                                 <span class="text-success">Sent</span>
+                                            {% elif overall_status == 'partial' %}
+                                                <span class="text-warning">Partial Fail</span>
                                             {% else %}
                                                 <span class="text-danger">Failed</span>
                                             {% endif %}
                                         </div>
                                         <div class="col-md-3">
-                                            <strong>Peer:</strong> <code>{{ log.peer }}</code>
+                                            <strong>Peer:</strong> <code>{{ log.peer_ip }}</code>
                                         </div>
                                         <div class="col-md-6">
                                             <strong>Message ID:</strong> <code>{{ log.message_id }}</code>
                                         </div>
                                     </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-4">
+                                            <strong>Username:</strong> {{ log.username or 'N/A' }}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>CC:</strong> {{ log.cc_addresses or 'None' }}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>BCC:</strong> {{ log.bcc_addresses or 'None' }}
+                                        </div>
+                                    </div>
+                                    {% if recipient_logs_map and log.id in recipient_logs_map and recipient_logs_map[log.id] %}
+                                    <div class="mt-2">
+                                        <strong>Recipient Delivery Results:</strong>
+                                        <ul class="list-group">
+                                            {% for r in recipient_logs_map[log.id] %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    <strong>{{ r.recipient_type|upper }}:</strong> {{ r.recipient }}
+                                                    {% if r.status == 'success' %}
+                                                        <span class="badge bg-success ms-2">Delivered</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger ms-2">Failed</span>
+                                                    {% endif %}
+                                                </span>
+                                                {% if r.error_code or r.error_message %}
+                                                <span class="text-danger ms-2">
+                                                    {{ r.error_code }} {{ r.error_message }}
+                                                </span>
+                                                {% endif %}
+                                                {% if r.server_response %}
+                                                <span class="text-muted ms-2">{{ r.server_response }}</span>
+                                                {% endif %}
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
                                     {% if log.subject %}
                                     <div class="mt-2">
                                         <strong>Subject:</strong> {{ log.subject }}
@@ -195,6 +272,13 @@
                                         </div>
                                     </div>
                                     {% endif %}
+                                    {% if log.has_message_content %}
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('email.view_message_content', log_id=log.id) }}" class="btn btn-outline-info btn-sm">
+                                            <i class="bi bi-file-earmark-text me-1"></i> View Full Message
+                                        </a>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         {% else %}
@@ -208,7 +292,7 @@
                                                 {{ 'Success' if log.success else 'Failed' }}
                                             </span>
                                         </div>
-                                        <small class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                        <small class="text-muted">{{ log.created_at|format_datetime }}</small>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-4">

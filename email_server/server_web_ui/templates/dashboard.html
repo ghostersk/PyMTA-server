@@ -144,7 +144,7 @@
                                 <tr>
                                     <td>
                                         <small class="text-muted">
-                                            {{ email.created_at.strftime('%H:%M:%S') }}
+                                            {{ email.created_at|format_datetime }}
                                         </small>
                                     </td>
                                     <td>
@@ -153,22 +153,38 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ email.to_address }}">
-                                            {{ email.to_address }}
+                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ email.rcpt_tos }}">
+                                            {{ email.rcpt_tos }}
                                         </span>
                                     </td>
                                     <td>
-                                        {% if email.status == 'relayed' %}
-                                            <span class="badge bg-success">
-                                                <i class="bi bi-check-circle me-1"></i>
-                                                Sent
-                                            </span>
+                                        {% set delivered = recipient_logs_map[email.id]|selectattr('status', 'equalto', 'success')|list %}
+                                        {% set failed = recipient_logs_map[email.id]|selectattr('status', 'ne', 'success')|list %}
+                                        {% if delivered and failed %}
+                                            {% set overall_status = 'partial' %}
+                                        {% elif delivered %}
+                                            {% set overall_status = 'relayed' %}
                                         {% else %}
-                                            <span class="badge bg-danger">
-                                                <i class="bi bi-x-circle me-1"></i>
-                                                Failed
-                                            </span>
+                                            {% set overall_status = 'failed' %}
                                         {% endif %}
+                                        <td>
+                                            {% if overall_status == 'relayed' %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Sent
+                                                </span>
+                                            {% elif overall_status == 'partial' %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Partial Fail
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="bi bi-x-circle me-1"></i>
+                                                    Failed
+                                                </span>
+                                            {% endif %}
+                                        </td>
                                     </td>
                                     <td>
                                         {% if email.dkim_signed %}
@@ -227,7 +243,7 @@
                                 </small>
                                 <br>
                                 <small class="text-muted">
-                                    {{ auth.created_at.strftime('%H:%M:%S') }}
+                                    {{ auth.created_at|format_datetime }}
                                 </small>
                             </div>
                             <small class="text-muted">

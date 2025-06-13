@@ -15,3 +15,4 @@ from .ip_whitelist import *
 from .dkim import *
 from .settings import *
 from .logs import *
+from .view_message import *

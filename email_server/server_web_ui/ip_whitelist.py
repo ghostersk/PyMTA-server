@@ -37,6 +37,7 @@ def add_ip():
         if request.method == 'POST':
             ip_address = request.form.get('ip_address', '').strip()
             domain_id = request.form.get('domain_id', type=int)
+            store_message_content = bool(request.form.get('store_message_content'))
             
             if not all([ip_address, domain_id]):
                 flash('All fields are required', 'error')
@@ -58,7 +59,8 @@ def add_ip():
             # Create whitelisted IP
             whitelist = WhitelistedIP(
                 ip_address=ip_address,
-                domain_id=domain_id
+                domain_id=domain_id,
+                store_message_content=store_message_content
             )
             session.add(whitelist)
             session.commit()
@@ -166,6 +168,7 @@ def edit_ip(ip_id: int):
         if request.method == 'POST':
             ip_address = request.form.get('ip_address', '').strip()
             domain_id = request.form.get('domain_id', type=int)
+            store_message_content = bool(request.form.get('store_message_content'))
             
             if not all([ip_address, domain_id]):
                 flash('All fields are required', 'error')
@@ -191,6 +194,7 @@ def edit_ip(ip_id: int):
             # Update IP record
             ip_record.ip_address = ip_address
             ip_record.domain_id = domain_id
+            ip_record.store_message_content = store_message_content
             session.commit()
             
             flash(f'IP whitelist record updated', 'success')

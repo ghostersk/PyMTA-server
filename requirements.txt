@@ -12,6 +12,7 @@ bcrypt
 dnspython
 dkimpy
 cryptography
+aiosmtplib
 
 # Web Frontend Dependencies
 Flask
@@ -19,7 +20,7 @@ Flask-SQLAlchemy
 Jinja2
 Werkzeug
 requests
-Flask-Migrate
+pytz
 gunicorn
 
 # Additional utilities

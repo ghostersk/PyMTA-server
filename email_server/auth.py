@@ -53,6 +53,7 @@ class EnhancedAuthenticator:
                 # Store authenticated sender info in session for later validation
                 session.authenticated_sender = sender
                 session.auth_type = 'sender'
+                session.username = username  # Store username in session
                 # Log successful authentication
                 log_auth_attempt(
                     auth_type='sender',
@@ -167,6 +168,7 @@ def validate_sender_authorization(session, mail_from: str) -> tuple[bool, str]:
         # Store IP auth info in session
         session.auth_type = 'ip'
         session.authorized_domain = from_domain
+        session.username = f"IP:{peer_ip}"  # Store IP as username for IP authentication
         
         log_auth_attempt(
             auth_type='ip',

@@ -24,6 +24,8 @@ DEFAULTS = {
         'BIND_IP': '0.0.0.0',
         '; Custom server banner (to make it empty use "" must be double quotes)': None,
         'server_banner': "",
+        '; Time zone for the server': None,
+        'TIME_ZONE': 'Europe/London',
     },
     'Database': {
         '; Database configuration': None,

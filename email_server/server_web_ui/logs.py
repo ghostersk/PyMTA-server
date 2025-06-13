@@ -4,12 +4,11 @@ Logs blueprint for the SMTP server web UI.
 This module provides email and authentication log viewing functionality.
 """
 
-from flask import render_template, request, jsonify
-from email_server.models import Session, EmailLog, AuthLog, Domain
+from flask import render_template, request, send_file, redirect, url_for, flash, Response
+from email_server.models import Session, EmailLog, AuthLog, EmailRecipientLog, EmailAttachment
 from email_server.tool_box import get_logger
-from sqlalchemy import desc
-from datetime import datetime, timedelta
 from .routes import email_bp
+import os
 
 logger = get_logger()
 
@@ -40,10 +39,15 @@ def logs():
             # Convert to unified format
             combined_logs = []
             for log in email_logs:
+                # Fetch recipient logs and attachments for each email log
+                recipient_logs = session.query(EmailRecipientLog).filter_by(email_log_id=log.id).all()
+                attachments = session.query(EmailAttachment).filter_by(email_log_id=log.id).all()
                 combined_logs.append({
                     'type': 'email',
                     'timestamp': log.created_at,
-                    'data': log
+                    'data': log,
+                    'recipients': recipient_logs,
+                    'attachments': attachments
                 })
             for log in auth_logs:
                 combined_logs.append({
@@ -69,12 +73,20 @@ def logs():
         
         has_next = offset + per_page < total
         has_prev = page > 1
-        
+        # Fetch recipient logs and attachments for each email log if emails
+        recipient_logs_map = {}
+        attachments_map = {}
+        if filter_type == 'emails':
+            for log in logs:
+                recipient_logs_map[log.id] = session.query(EmailRecipientLog).filter_by(email_log_id=log.id).all()
+                attachments_map[log.id] = session.query(EmailAttachment).filter_by(email_log_id=log.id).all()
         return render_template('logs.html', 
                              logs=logs, 
                              filter_type=filter_type,
                              page=page,
                              has_next=has_next,
-                             has_prev=has_prev)
+                             has_prev=has_prev,
+                             recipient_logs_map=recipient_logs_map,
+                             attachments_map=attachments_map)
     finally:
         session.close()

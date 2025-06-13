@@ -40,6 +40,7 @@ def add_sender():
             password = request.form.get('password', '').strip()
             domain_id = request.form.get('domain_id', type=int)
             can_send_as_domain = request.form.get('can_send_as_domain') == 'on'
+            store_message_content = request.form.get('store_message_content') == 'on'
             
             if not all([email, password, domain_id]):
                 flash('All fields are required', 'error')
@@ -61,7 +62,8 @@ def add_sender():
                 email=email,
                 password_hash=hash_password(password),
                 domain_id=domain_id,
-                can_send_as_domain=can_send_as_domain
+                can_send_as_domain=can_send_as_domain,
+                store_message_content=store_message_content
             )
             session.add(sender)
             session.commit()
@@ -171,6 +173,7 @@ def edit_sender(user_id: int):
             password = request.form.get('password', '').strip()
             domain_id = request.form.get('domain_id', type=int)
             can_send_as_domain = request.form.get('can_send_as_domain') == 'on'
+            store_message_content = request.form.get('store_message_content') == 'on'
             
             if not all([email, domain_id]):
                 flash('Email and domain are required', 'error')
@@ -194,6 +197,7 @@ def edit_sender(user_id: int):
             sender.email = email
             sender.domain_id = domain_id
             sender.can_send_as_domain = can_send_as_domain
+            sender.store_message_content = store_message_content
             
             # Update password if provided
             if password:

@@ -63,6 +63,7 @@ class Sender(Base):
     can_send_as_domain = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
+    store_message_content = Column(Boolean, default=False)  # Store message body/attachments
     
     def can_send_as(self, from_address: str) -> bool:
         """
@@ -100,6 +101,7 @@ class WhitelistedIP(Base):
     domain_id = Column(Integer, ForeignKey('esrv_domains.id'), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
+    store_message_content = Column(Boolean, default=False)  # Store message body/attachments
     
     def can_send_for_domain(self, domain_name: str) -> bool:
         """
@@ -133,26 +135,44 @@ class EmailLog(Base):
     __tablename__ = 'esrv_email_logs'
     
     id = Column(Integer, primary_key=True)
-    
-    # Legacy columns (from original schema)
     message_id = Column(String, unique=True, nullable=False)
     timestamp = Column(DateTime, nullable=False)
-    peer = Column(String, nullable=False)
+    peer_ip = Column(String, nullable=False)  # Store only IP address
     mail_from = Column(String, nullable=False)
-    rcpt_tos = Column(String, nullable=False)
-    content = Column(Text, nullable=False)
+    to_address = Column(String, nullable=False, server_default='')
+    cc_addresses = Column(String, nullable=True, server_default='')  # Comma-separated CC
+    bcc_addresses = Column(String, nullable=True, server_default='')  # Comma-separated BCC
+    subject = Column(Text, nullable=True)
+    email_headers = Column(Text, nullable=False)  # Store only email headers
+    message_body = Column(Text, nullable=True)  # Store actual message content
     status = Column(String, nullable=False)
     dkim_signed = Column(Boolean, default=False)
-    
-    # New columns (added later)
-    from_address = Column(String, nullable=False, server_default='unknown')
-    to_address = Column(String, nullable=False, server_default='unknown')
-    subject = Column(Text, nullable=True)
-    message = Column(Text, nullable=True)
+    username = Column(String, nullable=True)  # Authenticated username
     created_at = Column(DateTime, default=func.now())
-    
+
+    recipients = relationship("EmailRecipientLog", back_populates="email_log", cascade="all, delete-orphan")
+    attachments = relationship("EmailAttachment", back_populates="email_log", cascade="all, delete-orphan")
+
     def __repr__(self):
-        return f"<EmailLog(id={self.id}, message_id='{self.message_id}', from='{self.mail_from}', to='{self.rcpt_tos}', status='{self.status}')>"
+        return f"<EmailLog(id={self.id}, message_id='{self.message_id}', from='{self.mail_from}', to='{self.to_address}', status='{self.status}')>"
+
+class EmailRecipientLog(Base):
+    """Log for each recipient of an email, including status and error details."""
+    __tablename__ = 'esrv_email_recipient_logs'
+
+    id = Column(Integer, primary_key=True)
+    email_log_id = Column(Integer, ForeignKey('esrv_email_logs.id'), nullable=False)
+    recipient = Column(String, nullable=False)
+    recipient_type = Column(String, nullable=False)  # 'to', 'cc', 'bcc'
+    status = Column(String, nullable=False)  # 'success', 'failed', etc.
+    error_code = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    server_response = Column(Text, nullable=True)
+
+    email_log = relationship("EmailLog", back_populates="recipients")
+
+    def __repr__(self):
+        return f"<EmailRecipientLog(id={self.id}, recipient='{self.recipient}', type='{self.recipient_type}', status='{self.status}')>"
 
 class AuthLog(Base):
     """Authentication log model for security auditing."""
@@ -198,6 +218,23 @@ class CustomHeader(Base):
     
     def __repr__(self):
         return f"<CustomHeader(id={self.id}, domain_id={self.domain_id}, header='{self.header_name}: {self.header_value}', active={self.is_active})>"
+
+class EmailAttachment(Base):
+    """Attachment metadata and file path, linked to EmailLog."""
+    __tablename__ = 'esrv_email_attachments'
+
+    id = Column(Integer, primary_key=True)
+    email_log_id = Column(Integer, ForeignKey('esrv_email_logs.id'), nullable=False)
+    filename = Column(String, nullable=False)
+    content_type = Column(String, nullable=True)
+    file_path = Column(String, nullable=False)  # Path on disk
+    size = Column(Integer, nullable=True)
+    uploaded_at = Column(DateTime, default=func.now())
+
+    email_log = relationship("EmailLog", back_populates="attachments")
+
+    def __repr__(self):
+        return f"<EmailAttachment(id={self.id}, filename='{self.filename}', file_path='{self.file_path}')>"
 
 
 def create_tables():

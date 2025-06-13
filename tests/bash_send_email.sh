@@ -1,4 +1,5 @@
 #!/bin/bash
+# apt-get install -y swaks
 receiver="info@example.com"
 EMAIL_SERVER="localhost"   #"pymta.example.com" "localhost"
 EMAIL_SERVER_auth="10.100.111.1"   # IP for authenticated server ( not localhost), use your main interface ip
@@ -14,17 +15,12 @@ cc_recipient="ccrecipient@example.com"
 bcc_recipient="bccrecipient@example.com"
 
 <<com
-python -m email_server.cli_tools add-domain $domain
-python -m email_server.cli_tools add-user $username $password $domain
-python -m email_server.cli_tools add-ip 127.0.0.1 $domain
-python -m email_server.cli_tools add-ip 213.249.224.235 $domain
-python -m email_server.cli_tools generate-dkim $domain
-python -m email_server.cli_tools add-custom-header $domain X-Auth-Token "abc123-example-auth"
-python -m email_server.cli_tools add-custom-header $domain X-Server-ID "mail01.example.com"
 
 # options to add CC and BCC recipients for swaks
-      --cc $cc_recipient
-      --bcc $bcc_recipient
+      --cc $cc_recipient \
+      --bcc $bcc_recipient \
+      --header "To: $receiver" \
+      --header "Cc: $cc_recipient" \
 
 swaks --to $receiver \
       --from $sender \

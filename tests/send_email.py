@@ -4,7 +4,7 @@ import ssl
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=4025)
-parser.add_argument('--porttls', type=int, default=40587)
+parser.add_argument('--porttls', type=int, default=40465)
 parser.add_argument('--recipient', type=str, default="test@target-email.com")
 args = parser.parse_args()
 

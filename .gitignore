@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # Certs, db, private test files
+attachments/
 settings.ini
 *.crt
 *.key
