@@ -117,7 +117,7 @@ async def start_server(shutdown_event=None):
     )
     controller_tls.start()
     logger.debug(f'  - Plain SMTP (IP whitelist): {BIND_IP}:{SMTP_PORT}')
-    logger.debug(f'  - STARTTLS SMTP (auth required): {BIND_IP}:{SMTP_TLS_PORT}')
+    logger.debug(f'  - Direct TLS SMTP (SMTPS, auth required): {BIND_IP}:{SMTP_TLS_PORT}')
     logger.debug('Management available via web interface at: http://localhost:5000/email')
     
     try:

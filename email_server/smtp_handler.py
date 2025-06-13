@@ -21,7 +21,7 @@ from email_server.tool_box import get_logger
 logger = get_logger()
 
 class CustomSMTP(AIOSMTP):
-    """Custom SMTP class with configurable banner."""
+    """Custom SMTP class with configurable banner and secure AUTH handling."""
     
     def __init__(self, *args, **kwargs):
         # Sets Custom SMTP banner from settings
@@ -30,10 +30,30 @@ class CustomSMTP(AIOSMTP):
         if _banner_message == '""':
             _banner_message = ''
         self.custom_banner = _banner_message
-            
+        
+        # Store authenticator and auth_require_tls for later use
+        self._custom_authenticator = kwargs.get('authenticator', None)
+        self._custom_auth_require_tls = kwargs.get('auth_require_tls', False)
         super().__init__(*args, **kwargs)
         # Override the __ident__ to use our custom banner
         self.__ident__ = self.custom_banner
+
+    def _get_auth_methods(self):
+        # Only advertise AUTH if authenticator is set and (not auth_require_tls or connection is secure)
+        if self._custom_authenticator and (not self._custom_auth_require_tls or self.session and self.session.ssl):
+            return super()._get_auth_methods()
+        return []
+
+    async def smtp_AUTH(self, arg):
+        """
+        Override AUTH command to close connection after failed authentication.
+        """
+        result = await super().smtp_AUTH(arg)
+        # If authentication failed, close the connection immediately
+        if isinstance(result, AuthResult) and not result.success:
+            if hasattr(self, 'session') and hasattr(self.session, 'transport') and self.session.transport:
+                self.session.transport.close()
+        return result
 
 class EnhancedCombinedAuthenticator:
     """
@@ -353,7 +373,9 @@ class EnhancedCustomSMTPHandler:
         return '250 OK'
 
 class TLSController(Controller):
-    """Custom controller with TLS support - modeled after the working original."""
+    """
+    Custom controller for direct TLS (SMTPS, port 465) support.
+    """
     
     def __init__(self, handler, ssl_context, hostname='localhost', port=40587):
         logger.debug(f"TLSController __init__: ssl_context={ssl_context is not None}")
@@ -365,10 +387,11 @@ class TLSController(Controller):
         logger.debug(f"TLSController factory: ssl_context={self._ssl_context is not None}")
         logger.debug(f"TLSController factory: ssl_context object={self._ssl_context}")
         logger.debug(f"TLSController factory: hostname={self.smtp_hostname}")
+        # This is direct TLS (SMTPS, port 465 style)
         smtp_instance = CustomSMTP(
             self.handler,
             tls_context=self._ssl_context,
-            require_starttls=False,  # Don't require STARTTLS immediately, but make it available
+            require_starttls=False,  # Direct TLS: do not advertise or require STARTTLS
             auth_require_tls=True,   # If auth is used, require TLS
             authenticator=self.handler.combined_authenticator,
             decode_data=True,
@@ -378,17 +401,18 @@ class TLSController(Controller):
         return smtp_instance
 
 class PlainController(Controller):
-    """Controller for plain SMTP with username/password and IP-based authentication."""
+    """Controller for plain SMTP with authentication and IP whitelist fallback."""
     
     def __init__(self, handler, hostname='localhost', port=4025):
         self.smtp_hostname = hostname  # Store for HELO identification
         super().__init__(handler, hostname='0.0.0.0', port=port)  # Bind to all interfaces
     
     def factory(self):
+        # Pass authenticator and set auth_require_tls=False to enable AUTH on plain port
         return CustomSMTP(
             self.handler,
             authenticator=self.handler.combined_authenticator,
-            auth_require_tls=False,  # Allow AUTH over plain text (not recommended for production)
+            auth_require_tls=False,  # Allow AUTH on plain port
             decode_data=True,
             hostname=self.smtp_hostname  # Use proper hostname for HELO
         )

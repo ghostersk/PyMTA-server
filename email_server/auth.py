@@ -32,7 +32,7 @@ class EnhancedAuthenticator:
     def __call__(self, server, session, envelope, mechanism, auth_data):
         if not isinstance(auth_data, LoginPassword):
             logger.warning(f'Invalid auth data format: {type(auth_data)}')
-            return AuthResult(success=False, handled=True, message='535 Authentication failed')
+            return AuthResult(success=False, handled=False, message='535 Authentication failed')
         
         # Decode bytes to string if necessary
         username = auth_data.login
@@ -73,7 +73,7 @@ class EnhancedAuthenticator:
                     message=f'Invalid credentials for {username}'
                 )
                 logger.warning(f'Authentication failed for {username}: invalid credentials')
-                return AuthResult(success=False, handled=True, message='535 Authentication failed')
+                return AuthResult(success=False, handled=False, message='535 Authentication failed')
             
         except Exception as e:
             logger.error(f'Authentication error for {username}: {e}')
@@ -84,7 +84,7 @@ class EnhancedAuthenticator:
                 success=False,
                 message=f'Authentication error: {str(e)}'
             )
-            return AuthResult(success=False, handled=True, message='451 Internal server error')
+            return AuthResult(success=False, handled=False, message='451 Internal server error')
 
 class EnhancedIPAuthenticator:
     """
