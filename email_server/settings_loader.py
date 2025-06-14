@@ -40,7 +40,7 @@ DEFAULTS = {
     },
     'Relay': {
         '; Timeout in seconds for external SMTP connections': None,
-        'RELAY_TIMEOUT': '10',
+        'RELAY_TIMEOUT': '30',
     },
     'TLS': {
         '; TLS/SSL certificate configuration': None,

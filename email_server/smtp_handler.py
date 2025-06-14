@@ -8,22 +8,24 @@ Security Features:
 - Enhanced header management
 """
 
-import uuid
 import email.utils
 import os
+import mimetypes
 from aiosmtpd.smtp import SMTP as AIOSMTP, AuthResult
 from aiosmtpd.controller import Controller
 from email_server.auth import EnhancedAuthenticator, EnhancedIPAuthenticator, validate_sender_authorization
 from email_server.email_relay import EmailRelay
 from email_server.dkim_manager import DKIMManager
 from email_server.settings_loader import load_settings
-from email_server.tool_box import get_logger, ensure_folder_exists
+from email_server.tool_box import get_logger, ensure_folder_exists, generate_message_id, get_current_time
 from email import policy
 from email.parser import BytesParser
 from email_server.models import Session, EmailAttachment, EmailLog
 
 logger = get_logger()
 settings = load_settings()
+
+helo_hostname = settings['Server'].get('helo_hostname', settings['Server'].get('hostname', 'localhost'))
 
 class CustomSMTP(AIOSMTP):
     """Custom SMTP class with configurable banner and secure AUTH handling."""
@@ -151,14 +153,26 @@ class EnhancedCustomSMTPHandler:
             
             # 1. Message-ID (critical for spam filters)
             if 'message-id' in existing_headers:
-                required_headers.append(f"Message-ID: {existing_headers['message-id']}")
+                # Parse existing Message-ID
+                existing_msg_id = existing_headers['message-id'].strip('<>')
+                if '@' in existing_msg_id:
+                    prefix, hostname = existing_msg_id.rsplit('@', 1)
+                    hostname = hostname.rstrip('>')
+                    if hostname.lower() != helo_hostname.lower():
+                        # If hostname is wrong, modify it to use our hostname
+                        message_id = f"{prefix}@{helo_hostname}"
+                    else:
+                        # If hostname is correct, keep original ID
+                        message_id = existing_msg_id
+                else:
+                    # Malformed Message-ID, generate new one
+                    message_id = generate_message_id()
             else:
-                # Use helo_hostname from settings for FQDN in Message-ID
-                helo_hostname = settings['Server'].get('helo_hostname', 'localhost')
-                if not helo_hostname:
-                    # fallback to domain from mail_from
-                    helo_hostname = envelope.mail_from.split('@')[1] if '@' in envelope.mail_from else 'localhost'
-                required_headers.append(f"Message-ID: <{message_id}@{helo_hostname}>")
+                # No Message-ID found, generate new one
+                message_id = generate_message_id()
+            
+            # Add the Message-ID header with the final ID
+            required_headers.append(f"Message-ID: <{message_id}>")
             
             # 2. Date (critical for spam filters)
             if 'date' in existing_headers:
@@ -236,8 +250,28 @@ class EnhancedCustomSMTPHandler:
     async def handle_DATA(self, server, session, envelope):
         """Handle incoming email data with improved header management and logging."""
         try:
-            message_id = str(uuid.uuid4())
-            logger.debug(f'Received email {message_id} from {envelope.mail_from} to {envelope.rcpt_tos}')
+            # Convert content to string if it's bytes
+            if isinstance(envelope.content, bytes):
+                content = envelope.content.decode('utf-8', errors='replace')
+            else:
+                content = envelope.content
+
+            # Extract Message-ID from the content
+            for line in content.splitlines():
+                if line.lower().startswith('message-id:'):
+                    message_id_extracted = line[11:].strip().strip('<>')  # Remove "Message-ID:" and brackets
+                    if '@' in message_id_extracted:
+                        prefix, hostname = message_id_extracted.rsplit('@', 1)
+                        hostname = hostname.rstrip('>')
+                    if hostname.lower() != helo_hostname.lower():
+                        # If hostname is wrong, modify it to use our hostname
+                        message_id = f"{prefix}@{helo_hostname}"
+                    else:
+                        # If hostname is correct, keep original ID
+                        message_id = message_id_extracted
+                    break
+           
+            logger.debug(f'Processing email with ID: {message_id} from {envelope.mail_from} to {envelope.rcpt_tos}')
 
             # Get authenticated username from session
             username = getattr(session, 'username', None)
@@ -378,11 +412,17 @@ class EnhancedCustomSMTPHandler:
                             content_type = self.get_content_type(part, filename)
                             size = len(file_data)
                             
+                            # Strip @domain from message_id for filename
+                            clean_message_id = message_id.split('@')[0] if '@' in message_id else message_id
+                            
                             # Build a unique file path
-                            safe_filename = f"{message_id}_{filename}"
+                            safe_filename = f"{clean_message_id}_{filename}"
                             file_path = os.path.join(storage_path, safe_filename)
                             
                             try:
+                                # Ensure the directory exists before saving
+                                ensure_folder_exists(file_path)
+                                
                                 # Save the file
                                 with open(file_path, 'wb') as f:
                                     f.write(file_data)
@@ -569,7 +609,7 @@ class EnhancedCustomSMTPHandler:
         return '250 OK'
 
     def get_attachment_storage_path(self, attachments_base_path: str, sender_domain: str, username: str = None, client_ip: str = None) -> str:
-        """Generate the storage path for attachments based on sender domain and authentication.
+        """Generate the storage path for attachments based on sender domain, authentication, and date.
         
         Args:
             attachments_base_path: Base path for attachments storage
@@ -578,29 +618,36 @@ class EnhancedCustomSMTPHandler:
             client_ip: Client IP address (if IP-based authentication)
             
         Returns:
-            str: Full path where attachments should be stored
+            str: Full path where attachments should be stored, format:
+                base/domain/[username|ip]/YYYY-DD-MMM/
         """
+
+        # Get current date in YYYY-DD-MMM format using consistent time function
+        current_date = get_current_time().strftime('%Y-%d-%b')  # e.g., 2025-14-Jun
+        
         # Sanitize domain name for folder name
         safe_domain = sender_domain.replace('/', '_').replace('\\', '_')
         domain_path = os.path.join(attachments_base_path, safe_domain)
         
-        # Determine subfolder based on authentication
+        # Determine auth-based subfolder path
         if username:
             # Sanitize username for folder name
             safe_username = username.replace('/', '_').replace('\\', '_')
-            return os.path.join(domain_path, safe_username)
+            auth_path = os.path.join(domain_path, safe_username)
         elif client_ip:
             # Sanitize IP for folder name
             safe_ip = client_ip.replace(':', '_')
-            return os.path.join(domain_path, safe_ip)
+            auth_path = os.path.join(domain_path, safe_ip)
         else:
             # Fallback to domain-only path
-            return domain_path
+            auth_path = domain_path
+        
+        # Add date-based subfolder
+        return os.path.join(auth_path, current_date)
 
     def get_content_type(self, part, filename):
         """Get the correct content type for a file, trying multiple methods."""
-        import mimetypes
-        
+                
         # First try the part's content type
         content_type = part.get_content_type()
         

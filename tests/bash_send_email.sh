@@ -31,9 +31,11 @@ swaks --to $receiver \
       --auth-password $password \
       --tls \
       --header "Subject: TLS - Large body email" \
-      --body $body_content_file 
-     # --attach @/home/nahaku/Documents/Projects/SMTP_Server/tests/email_body.txt 
-     # --attach @/home/nahaku/Documents/Projects/SMTP_Server/tests/Hello.jpg
+      --body "simple body content" \
+      --attach @/home/nahaku/Documents/Projects/SMTP_Server/tests/pdf_test_1.pdf \
+      --attach @/home/nahaku/Documents/Projects/SMTP_Server/tests/note_authentication_order_fix.md
+      #--attach @/home/nahaku/Documents/Projects/SMTP_Server/tests/Hello.jpg
+      #--attach @/home/nahaku/Documents/Projects/SMTP_Server/tests/email_body.txt
 
 com
 <<com 

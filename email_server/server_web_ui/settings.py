@@ -12,6 +12,7 @@ This module provides server settings management functionality including:
 import os
 import time
 from pathlib import Path
+import zoneinfo
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 from email_server.settings_loader import load_settings, SETTINGS_PATH
@@ -29,11 +30,21 @@ ALLOWED_EXTENSIONS = {'crt', 'key', 'pem'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def get_template_context():
+    """Get template context with CSRF token and common data."""
+    context = {
+        'settings': load_settings(),
+        'timezones': get_available_timezones(),
+    }
+    # Only add CSRF token if it exists and is enabled
+    if hasattr(request, 'csrf_token'):
+        context['csrf_token_value'] = request.csrf_token
+    return context
+
 @email_bp.route('/settings')
 def settings():
     """Display and edit server settings."""
-    settings = load_settings()
-    return render_template('settings.html', settings=settings)
+    return render_template('settings.html', **get_template_context())
 
 @email_bp.route('/settings_update', methods=['POST'])
 def settings_update():
@@ -195,3 +206,40 @@ def get_server_ip():
     except Exception as e:
         logger.error(f"Error getting public IP: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
+
+@email_bp.route('/test_attachments_path', methods=['POST'])
+def test_attachments_path():
+    """Test if the attachments path is writable."""
+    path = request.form.get('path')
+    if not path:
+        return jsonify({'success': False, 'message': 'No path provided'})
+        
+    # Convert to absolute path if relative
+    if not os.path.isabs(path):
+        path = os.path.abspath(os.path.join(os.path.dirname(SETTINGS_PATH), path))
+    
+    try:
+        # Create path if it doesn't exist
+        os.makedirs(path, exist_ok=True)
+        
+        # Try to create a test file
+        test_file = os.path.join(path, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        return jsonify({
+            'success': True, 
+            'message': 'Attachments path is valid and writable',
+            'absolute_path': path
+        })
+    except Exception as e:
+        logger.error(f"Error testing attachments path: {e}")
+        return jsonify({
+            'success': False, 
+            'message': f'Error: {str(e)}',
+            'absolute_path': path
+        })
+
+def get_available_timezones():
+    """Get a list of all available timezones sorted alphabetically."""
+    return sorted(zoneinfo.available_timezones())

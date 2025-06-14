@@ -134,7 +134,7 @@
                                 <tr>
                                     <th>Time</th>
                                     <th>From</th>
-                                    <th>To</th>
+                                    <th>Recipients</th>
                                     <th>Status</th>
                                     <th>DKIM</th>
                                 </tr>
@@ -153,9 +153,46 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ email.rcpt_tos }}">
-                                            {{ email.rcpt_tos }}
-                                        </span>
+                                        <div style="max-width: 200px; font-size: 0.85rem;">
+                                            <div class="recipients-list">
+                                                {% if email.to_address %}
+                                                    {% for rcpt in email.to_address.split(',') %}
+                                                        {% if rcpt.strip() %}
+                                                        <div class="text-truncate">
+                                                            <span class="text-info fw-bold" style="font-size: 0.75rem;">To:</span>
+                                                            <span title="{{ rcpt.strip() }}">{{ rcpt.strip() }}</span>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                
+                                                {% if email.cc_addresses %}
+                                                    {% for rcpt in email.cc_addresses.split(',') %}
+                                                        {% if rcpt.strip() %}
+                                                        <div class="text-truncate">
+                                                            <span class="text-warning fw-bold" style="font-size: 0.75rem;">CC:</span>
+                                                            <span title="{{ rcpt.strip() }}">{{ rcpt.strip() }}</span>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                
+                                                {% if email.bcc_addresses %}
+                                                    {% for rcpt in email.bcc_addresses.split(',') %}
+                                                        {% if rcpt.strip() %}
+                                                        <div class="text-truncate">
+                                                            <span class="text-secondary fw-bold" style="font-size: 0.75rem;">BCC:</span>
+                                                            <span title="{{ rcpt.strip() }}">{{ rcpt.strip() }}</span>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                
+                                                {% if not email.to_address and not email.cc_addresses and not email.bcc_addresses %}
+                                                <div class="text-muted">No recipients</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
                                         {% set delivered = recipient_logs_map[email.id]|selectattr('status', 'equalto', 'success')|list %}
@@ -167,7 +204,6 @@
                                         {% else %}
                                             {% set overall_status = 'failed' %}
                                         {% endif %}
-                                        <td>
                                             {% if overall_status == 'relayed' %}
                                                 <span class="badge bg-success">
                                                     <i class="bi bi-check-circle me-1"></i>
@@ -333,6 +369,15 @@
 .dashboard-card-link:hover .card {
     box-shadow: 0 0 0 2px #0d6efd33;
     filter: brightness(1.05);
+}
+.recipients-list {
+    line-height: 1.2;
+}
+.recipients-list div {
+    margin-bottom: 2px;
+}
+.recipients-list div:last-child {
+    margin-bottom: 0;
 }
 </style>
 

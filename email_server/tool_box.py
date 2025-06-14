@@ -7,8 +7,11 @@ import logging
 from email_server.settings_loader import load_settings
 from datetime import datetime
 import pytz
+import time
+import random
 
 settings = load_settings()
+helo_hostname = settings['Server'].get('helo_hostname', settings['Server'].get('hostname', 'localhost'))
 
 def ensure_folder_exists(filepath):
     """
@@ -64,3 +67,13 @@ def get_current_time():
     """Get current time with timezone from settings."""
     timezone = pytz.timezone(settings['Server'].get('time_zone', 'UTC'))
     return datetime.now(timezone)
+
+def generate_message_id(hostname=helo_hostname) -> str:
+    """Generate a consistent Message-ID for both email headers and database storage.
+    
+    Returns:
+        str: Message-ID in format YYYYMMDDhhmmss.RANDOM@hostname without brackets
+    """
+    timestamp = time.strftime('%Y%m%d%H%M%S')
+    random_id = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    return f"{timestamp}.{random_id}@{hostname}"
