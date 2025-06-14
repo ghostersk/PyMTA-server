@@ -18,6 +18,13 @@ python app.py --smtp-only & gunicorn -w 4 -b 0.0.0.0:5000 app:flask_app
 
 [Send Test Emails examples](./tests/run_tests_manually.md)
 
+![image](https://github.com/user-attachments/assets/4ec1ed38-ca16-4d77-8836-705e554bdf29)
+![image](https://github.com/user-attachments/assets/333e284a-33c8-4a7e-8cb3-f98438f03c80)
+![image](https://github.com/user-attachments/assets/d10864f6-4b3a-4e92-8d85-19cfb630d960)
+![image](https://github.com/user-attachments/assets/7d9b7a3f-b5df-4d2c-ac47-f9544059bd86)
+![image](https://github.com/user-attachments/assets/258f4f82-9859-4666-a8b6-5f6025311057)
+![image](https://github.com/user-attachments/assets/8e79005a-e034-4663-9b5e-c17ca735fee5)
+
 
 ## License
 
