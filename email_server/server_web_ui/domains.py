@@ -10,7 +10,7 @@ This module provides domain management functionality including:
 """
 
 from flask import render_template, request, redirect, url_for, flash
-from email_server.models import Session, Domain, User, WhitelistedIP, DKIMKey, CustomHeader
+from email_server.models import Session, Domain, Sender, WhitelistedIP, DKIMKey, CustomHeader
 from email_server.dkim_manager import DKIMManager
 from email_server.tool_box import get_logger
 from sqlalchemy.orm import joinedload
@@ -188,12 +188,12 @@ def remove_domain(domain_id: int):
         domain_name = domain.domain_name
         
         # Count associated records
-        user_count = session.query(User).filter_by(domain_id=domain_id).count()
+        sender_count = session.query(Sender).filter_by(domain_id=domain_id).count()
         ip_count = session.query(WhitelistedIP).filter_by(domain_id=domain_id).count()
         dkim_count = session.query(DKIMKey).filter_by(domain_id=domain_id).count()
         
         # Delete associated records
-        session.query(User).filter_by(domain_id=domain_id).delete()
+        session.query(Sender).filter_by(domain_id=domain_id).delete()
         session.query(WhitelistedIP).filter_by(domain_id=domain_id).delete()
         session.query(DKIMKey).filter_by(domain_id=domain_id).delete()
         session.query(CustomHeader).filter_by(domain_id=domain_id).delete()
@@ -202,7 +202,7 @@ def remove_domain(domain_id: int):
         session.delete(domain)
         session.commit()
         
-        flash(f'Domain {domain_name} and all associated data permanently removed ({user_count} users, {ip_count} IPs, {dkim_count} DKIM keys)', 'success')
+        flash(f'Domain {domain_name} and all associated data permanently removed ({sender_count} senders, {ip_count} IPs, {dkim_count} DKIM keys)', 'success')
         return redirect(url_for('email.domains_list'))
         
     except Exception as e:

@@ -10,27 +10,27 @@ This module provides sender management functionality including:
 """
 
 from flask import render_template, request, redirect, url_for, flash
-from email_server.models import Session, Domain, User
+from email_server.models import Session, Domain, Sender
 from email_server.tool_box import get_logger
 import bcrypt
 from .routes import email_bp
-from email_server.models import Session, Domain, User, hash_password
+from email_server.models import Session, Domain, Sender, hash_password
 
 logger = get_logger()
 
 @email_bp.route('/senders')
 def senders_list():
-    """List all users."""
+    """List all senders."""
     session = Session()
     try:
-        users = session.query(User, Domain).join(Domain, User.domain_id == Domain.id).order_by(User.email).all()
-        return render_template('senders.html', users=users)
+        senders = session.query(Sender, Domain).join(Domain, Sender.domain_id == Domain.id).order_by(Sender.email).all()
+        return render_template('senders.html', senders=senders)
     finally:
         session.close()
 
 @email_bp.route('/senders/add', methods=['GET', 'POST'])
 def add_sender():
-    """Add new user."""
+    """Add new sender."""
     session = Session()
     try:
         domains = session.query(Domain).filter_by(is_active=True).order_by(Domain.domain_name).all()
@@ -40,6 +40,7 @@ def add_sender():
             password = request.form.get('password', '').strip()
             domain_id = request.form.get('domain_id', type=int)
             can_send_as_domain = request.form.get('can_send_as_domain') == 'on'
+            store_message_content = request.form.get('store_message_content') == 'on'
             
             if not all([email, password, domain_id]):
                 flash('All fields are required', 'error')
@@ -50,118 +51,119 @@ def add_sender():
                 flash('Invalid email format', 'error')
                 return redirect(url_for('email.add_sender'))
             
-            # Check if user already exists
-            existing = session.query(User).filter_by(email=email).first()
+            # Check if sender already exists
+            existing = session.query(Sender).filter_by(email=email).first()
             if existing:
-                flash(f'User {email} already exists', 'error')
+                flash(f'Sender {email} already exists', 'error')
                 return redirect(url_for('email.senders_list'))
             
-            # Create user
-            user = User(
+            # Create sender
+            sender = Sender(
                 email=email,
                 password_hash=hash_password(password),
                 domain_id=domain_id,
-                can_send_as_domain=can_send_as_domain
+                can_send_as_domain=can_send_as_domain,
+                store_message_content=store_message_content
             )
-            session.add(user)
+            session.add(sender)
             session.commit()
             
-            flash(f'User {email} added successfully', 'success')
+            flash(f'Sender {email} added successfully', 'success')
             return redirect(url_for('email.senders_list'))
         
         return render_template('add_sender.html', domains=domains)
     
     except Exception as e:
         session.rollback()
-        logger.error(f"Error adding user: {e}")
-        flash(f'Error adding user: {str(e)}', 'error')
+        logger.error(f"Error adding sender: {e}")
+        flash(f'Error adding sender: {str(e)}', 'error')
         return redirect(url_for('email.add_sender'))
     finally:
         session.close()
 
 @email_bp.route('/senders/<int:user_id>/delete', methods=['POST'])
 def delete_sender(user_id: int):
-    """Disable user (soft delete)."""
+    """Disable sender (soft delete)."""
     session = Session()
     try:
-        user = session.query(User).get(user_id)
-        if not user:
-            flash('User not found', 'error')
+        sender = session.query(Sender).get(user_id)
+        if not sender:
+            flash('Sender not found', 'error')
             return redirect(url_for('email.senders_list'))
         
-        user_email = user.email
-        user.is_active = False
+        sender_email = sender.email
+        sender.is_active = False
         session.commit()
         
-        flash(f'User {user_email} disabled', 'success')
+        flash(f'Sender {sender_email} disabled', 'success')
         return redirect(url_for('email.senders_list'))
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error disabling user: {e}")
-        flash(f'Error disabling user: {str(e)}', 'error')
+        logger.error(f"Error disabling sender: {e}")
+        flash(f'Error disabling sender: {str(e)}', 'error')
         return redirect(url_for('email.senders_list'))
     finally:
         session.close()
 
 @email_bp.route('/senders/<int:user_id>/enable', methods=['POST'])
 def enable_sender(user_id: int):
-    """Enable user."""
+    """Enable sender."""
     session = Session()
     try:
-        user = session.query(User).get(user_id)
-        if not user:
-            flash('User not found', 'error')
+        sender = session.query(Sender).get(user_id)
+        if not sender:
+            flash('Sender not found', 'error')
             return redirect(url_for('email.senders_list'))
         
-        user_email = user.email
-        user.is_active = True
+        sender_email = sender.email
+        sender.is_active = True
         session.commit()
         
-        flash(f'User {user_email} enabled', 'success')
+        flash(f'Sender {sender_email} enabled', 'success')
         return redirect(url_for('email.senders_list'))
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error enabling user: {e}")
-        flash(f'Error enabling user: {str(e)}', 'error')
+        logger.error(f"Error enabling sender: {e}")
+        flash(f'Error enabling sender: {str(e)}', 'error')
         return redirect(url_for('email.senders_list'))
     finally:
         session.close()
 
 @email_bp.route('/senders/<int:user_id>/remove', methods=['POST'])
 def remove_sender(user_id: int):
-    """Permanently remove user."""
+    """Permanently remove sender."""
     session = Session()
     try:
-        user = session.query(User).get(user_id)
-        if not user:
-            flash('User not found', 'error')
+        sender = session.query(Sender).get(user_id)
+        if not sender:
+            flash('Sender not found', 'error')
             return redirect(url_for('email.senders_list'))
         
-        user_email = user.email
-        session.delete(user)
+        sender_email = sender.email
+        session.delete(sender)
         session.commit()
         
-        flash(f'User {user_email} permanently removed', 'success')
+        flash(f'Sender {sender_email} permanently removed', 'success')
         return redirect(url_for('email.senders_list'))
         
     except Exception as e:
         session.rollback()
-        logger.error(f"Error removing user: {e}")
-        flash(f'Error removing user: {str(e)}', 'error')
+        logger.error(f"Error removing sender: {e}")
+        flash(f'Error removing sender: {str(e)}', 'error')
         return redirect(url_for('email.senders_list'))
     finally:
         session.close()
 
 @email_bp.route('/senders/<int:user_id>/edit', methods=['GET', 'POST'])
 def edit_sender(user_id: int):
-    """Edit user."""
+    """Edit sender."""
     session = Session()
     try:
-        user = session.query(User).get(user_id)
-        if not user:
-            flash('User not found', 'error')
+        sender = session.query(Sender).get(user_id)
+        if not sender:
+            flash('Sender not found', 'error')
             return redirect(url_for('email.senders_list'))
         
         domains = session.query(Domain).filter_by(is_active=True).order_by(Domain.domain_name).all()
@@ -171,6 +173,7 @@ def edit_sender(user_id: int):
             password = request.form.get('password', '').strip()
             domain_id = request.form.get('domain_id', type=int)
             can_send_as_domain = request.form.get('can_send_as_domain') == 'on'
+            store_message_content = request.form.get('store_message_content') == 'on'
             
             if not all([email, domain_id]):
                 flash('Email and domain are required', 'error')
@@ -181,35 +184,36 @@ def edit_sender(user_id: int):
                 flash('Invalid email format', 'error')
                 return redirect(url_for('email.edit_sender', user_id=user_id))
             
-            # Check if email already exists (excluding current user)
-            existing = session.query(User).filter(
-                User.email == email,
-                User.id != user_id
+            # Check if email already exists (excluding current sender)
+            existing = session.query(Sender).filter(
+                Sender.email == email,
+                Sender.id != user_id
             ).first()
             if existing:
                 flash(f'Email {email} already exists', 'error')
                 return redirect(url_for('email.edit_sender', user_id=user_id))
             
-            # Update user
-            user.email = email
-            user.domain_id = domain_id
-            user.can_send_as_domain = can_send_as_domain
+            # Update sender
+            sender.email = email
+            sender.domain_id = domain_id
+            sender.can_send_as_domain = can_send_as_domain
+            sender.store_message_content = store_message_content
             
             # Update password if provided
             if password:
-                user.password_hash = hash_password(password)
+                sender.password_hash = hash_password(password)
             
             session.commit()
             
-            flash(f'User {email} updated successfully', 'success')
+            flash(f'Sender {email} updated successfully', 'success')
             return redirect(url_for('email.senders_list'))
         
-        return render_template('edit_sender.html', user=user, domains=domains)
+        return render_template('edit_sender.html', sender=sender, domains=domains)
     
     except Exception as e:
         session.rollback()
-        logger.error(f"Error editing user: {e}")
-        flash(f'Error editing user: {str(e)}', 'error')
+        logger.error(f"Error editing sender: {e}")
+        flash(f'Error editing sender: {str(e)}', 'error')
         return redirect(url_for('email.senders_list'))
     finally:
         session.close()

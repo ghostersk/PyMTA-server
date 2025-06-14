@@ -44,7 +44,7 @@
                        class="nav-link text-white {{ 'active' if request.endpoint in ['email.senders_list', 'email.add_user'] else '' }}">
                         <i class="bi bi-people me-2"></i>
                         Allowed Senders
-                        <span class="badge bg-secondary ms-auto">{{ user_count if user_count is defined else '' }}</span>
+                        <span class="badge bg-secondary ms-auto">{{ sender_count if sender_count is defined else '' }}</span>
                     </a>
                 </li>
                 
@@ -98,7 +98,7 @@
                         Server Settings
                     </a>
                 </li>
-                
+                {#
                 <!-- Monitoring Section -->
                 <li class="nav-item mb-2">
                     <h6 class="text-muted text-uppercase small mb-2 mt-3">
@@ -114,6 +114,7 @@
                         Logs & Activity
                     </a>
                 </li>
+                #}
             </ul>
         </div>
         
@@ -122,12 +123,22 @@
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
                     <small class="text-muted d-block">Server Status</small>
-                    <small class="text-success">
+                    {% set health = check_health() %}
+                    <small class="{% if health.status == 'healthy' %}text-success{% else %}text-warning{% endif %} status-indicator"
+                           data-bs-toggle="tooltip" 
+                           data-bs-html="true"
+                           data-bs-placement="top"
+                           title="{{ (
+                               "<div class='text-start'><strong>Service Status:</strong><br>" +
+                               'SMTP Server: ' + health.services.smtp_server|title + '<br>' +
+                               'Web Frontend: ' + health.services.web_frontend|title + '<br>' +
+                               'Database: ' + health.services.database|title + '</div>'
+                           ) | safe }}">
                         <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
-                        Online
+                        {{ health.status|title }}
                     </small>
                 </div>
-                <button class="btn btn-outline-secondary btn-sm" title="Refresh Status">
+                <button class="btn btn-outline-secondary btn-sm" title="Refresh Status" onclick="location.reload()">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
             </div>
@@ -170,6 +181,10 @@
     font-size: 0.7rem;
 }
 
+.status-indicator {
+    cursor: pointer;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .sidebar {
@@ -186,3 +201,16 @@
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+            html: true,
+            placement: 'top',
+            trigger: 'hover'
+        });
+    });
+});
+</script>

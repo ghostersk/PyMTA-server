@@ -46,7 +46,7 @@ async def start_server(shutdown_event=None):
     # dkim_manager.initialize_default_keys()  # Removed: do not auto-generate DKIM keys for all domains
     
     # Add test data if needed
-    from .models import Session, Domain, User, WhitelistedIP, hash_password
+    from .models import Session, Domain, Sender, WhitelistedIP, hash_password
     session = Session()
     try:
         # Add example.com domain if not exists
@@ -57,17 +57,17 @@ async def start_server(shutdown_event=None):
             session.commit()
             logger.debug("Added example.com domain")
         
-        # Add test user if not exists
-        user = session.query(User).filter_by(email='test@example.com').first()
-        if not user:
-            user = User(
+        # Add test sender if not exists
+        sender = session.query(Sender).filter_by(email='test@example.com').first()
+        if not sender:
+            sender = Sender(
                 email='test@example.com',
                 password_hash=hash_password('testpass123'),
                 domain_id=domain.id
             )
-            session.add(user)
+            session.add(sender)
             session.commit()
-            logger.debug("Added test user: test@example.com")
+            logger.debug("Added test sender: test@example.com")
         
         # Add whitelisted IP if not exists
         whitelist = session.query(WhitelistedIP).filter_by(ip_address='127.0.0.1').first()
@@ -117,7 +117,7 @@ async def start_server(shutdown_event=None):
     )
     controller_tls.start()
     logger.debug(f'  - Plain SMTP (IP whitelist): {BIND_IP}:{SMTP_PORT}')
-    logger.debug(f'  - STARTTLS SMTP (auth required): {BIND_IP}:{SMTP_TLS_PORT}')
+    logger.debug(f'  - Direct TLS SMTP (SMTPS, auth required): {BIND_IP}:{SMTP_TLS_PORT}')
     logger.debug('Management available via web interface at: http://localhost:5000/email')
     
     try:

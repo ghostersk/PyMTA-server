@@ -7,6 +7,7 @@
 <div class="row">
     <!-- Statistics Cards -->
     <div class="col-lg-3 col-md-6 mb-4">
+        <a href="{{ url_for('email.domains_list') }}" class="dashboard-card-link text-decoration-none">
         <div class="card border-primary">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -24,19 +25,21 @@
                 </div>
             </div>
         </div>
+        </a>
     </div>
     
     <div class="col-lg-3 col-md-6 mb-4">
+        <a href="{{ url_for('email.senders_list') }}" class="dashboard-card-link text-decoration-none">
         <div class="card border-success">
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h5 class="card-title text-success mb-1">
                             <i class="bi bi-people me-2"></i>
-                            Users
+                            Senders
                         </h5>
-                        <h3 class="mb-0">{{ user_count }}</h3>
-                        <small class="text-muted">Authenticated users</small>
+                        <h3 class="mb-0">{{ sender_count }}</h3>
+                        <small class="text-muted">Authenticated senders</small>
                     </div>
                     <div class="fs-2 text-success opacity-50">
                         <i class="bi bi-people"></i>
@@ -44,9 +47,11 @@
                 </div>
             </div>
         </div>
+        </a>
     </div>
     
     <div class="col-lg-3 col-md-6 mb-4">
+        <a href="{{ url_for('email.dkim_list') }}" class="dashboard-card-link text-decoration-none">
         <div class="card border-warning">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -64,6 +69,7 @@
                 </div>
             </div>
         </div>
+        </a>
     </div>
     
     <div class="col-lg-3 col-md-6 mb-4">
@@ -75,11 +81,28 @@
                             <i class="bi bi-activity me-2"></i>
                             Status
                         </h5>
-                        <h6 class="text-success mb-0">
+                        {% set health = check_health() %}
+                        <h6 class="{% if health.status == 'healthy' %}text-success{% else %}text-warning{% endif %} mb-0 status-indicator"
+                            data-bs-toggle="tooltip" 
+                            data-bs-html="true"
+                            data-bs-placement="top"
+                            title="{{ (
+                                "<div class='text-start'><strong>Service Status:</strong><br>" +
+                                'SMTP Server: ' + health.services.smtp_server|title + '<br>' +
+                                'Web Frontend: ' + health.services.web_frontend|title + '<br>' +
+                                'Database: ' + health.services.database|title + '</div>'
+                            ) | safe }}">
                             <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
-                            Online
+                            {{ health.status|title }}
                         </h6>
-                        <small class="text-muted">Server running</small>
+                        <small class="text-muted">
+                            {% if health.services.smtp_server == 'running' and health.services.database == 'ok' %}
+                                All services running
+                            {% else %}
+                                {% if health.services.smtp_server == 'stopped' %}SMTP Server stopped{% endif %}
+                                {% if health.services.database == 'error' %}Database error{% endif %}
+                            {% endif %}
+                        </small>
                     </div>
                     <div class="fs-2 text-info opacity-50">
                         <i class="bi bi-activity"></i>
@@ -111,7 +134,7 @@
                                 <tr>
                                     <th>Time</th>
                                     <th>From</th>
-                                    <th>To</th>
+                                    <th>Recipients</th>
                                     <th>Status</th>
                                     <th>DKIM</th>
                                 </tr>
@@ -121,7 +144,7 @@
                                 <tr>
                                     <td>
                                         <small class="text-muted">
-                                            {{ email.created_at.strftime('%H:%M:%S') }}
+                                            {{ email.created_at|format_datetime }}
                                         </small>
                                     </td>
                                     <td>
@@ -130,22 +153,74 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ email.to_address }}">
-                                            {{ email.to_address }}
-                                        </span>
+                                        <div style="max-width: 200px; font-size: 0.85rem;">
+                                            <div class="recipients-list">
+                                                {% if email.to_address %}
+                                                    {% for rcpt in email.to_address.split(',') %}
+                                                        {% if rcpt.strip() %}
+                                                        <div class="text-truncate">
+                                                            <span class="text-info fw-bold" style="font-size: 0.75rem;">To:</span>
+                                                            <span title="{{ rcpt.strip() }}">{{ rcpt.strip() }}</span>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                
+                                                {% if email.cc_addresses %}
+                                                    {% for rcpt in email.cc_addresses.split(',') %}
+                                                        {% if rcpt.strip() %}
+                                                        <div class="text-truncate">
+                                                            <span class="text-warning fw-bold" style="font-size: 0.75rem;">CC:</span>
+                                                            <span title="{{ rcpt.strip() }}">{{ rcpt.strip() }}</span>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                
+                                                {% if email.bcc_addresses %}
+                                                    {% for rcpt in email.bcc_addresses.split(',') %}
+                                                        {% if rcpt.strip() %}
+                                                        <div class="text-truncate">
+                                                            <span class="text-secondary fw-bold" style="font-size: 0.75rem;">BCC:</span>
+                                                            <span title="{{ rcpt.strip() }}">{{ rcpt.strip() }}</span>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                
+                                                {% if not email.to_address and not email.cc_addresses and not email.bcc_addresses %}
+                                                <div class="text-muted">No recipients</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
-                                        {% if email.status == 'relayed' %}
-                                            <span class="badge bg-success">
-                                                <i class="bi bi-check-circle me-1"></i>
-                                                Sent
-                                            </span>
+                                        {% set delivered = recipient_logs_map[email.id]|selectattr('status', 'equalto', 'success')|list %}
+                                        {% set failed = recipient_logs_map[email.id]|selectattr('status', 'ne', 'success')|list %}
+                                        {% if delivered and failed %}
+                                            {% set overall_status = 'partial' %}
+                                        {% elif delivered %}
+                                            {% set overall_status = 'relayed' %}
                                         {% else %}
-                                            <span class="badge bg-danger">
-                                                <i class="bi bi-x-circle me-1"></i>
-                                                Failed
-                                            </span>
+                                            {% set overall_status = 'failed' %}
                                         {% endif %}
+                                            {% if overall_status == 'relayed' %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Sent
+                                                </span>
+                                            {% elif overall_status == 'partial' %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Partial Fail
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="bi bi-x-circle me-1"></i>
+                                                    Failed
+                                                </span>
+                                            {% endif %}
+                                        </td>
                                     </td>
                                     <td>
                                         {% if email.dkim_signed %}
@@ -204,7 +279,7 @@
                                 </small>
                                 <br>
                                 <small class="text-muted">
-                                    {{ auth.created_at.strftime('%H:%M:%S') }}
+                                    {{ auth.created_at|format_datetime }}
                                 </small>
                             </div>
                             <small class="text-muted">
@@ -248,7 +323,7 @@
                         <div class="d-grid">
                             <a href="{{ url_for('email.add_sender') }}" class="btn btn-outline-success">
                                 <i class="bi bi-person-plus me-2"></i>
-                                Add User
+                                Add Sender
                             </a>
                         </div>
                     </div>
@@ -281,5 +356,41 @@
     setTimeout(function() {
         location.reload();
     }, 30000);
+</script>
+
+<style>
+.status-indicator {
+    cursor: pointer;
+}
+.dashboard-card-link {
+    cursor: pointer;
+    display: block;
+}
+.dashboard-card-link:hover .card {
+    box-shadow: 0 0 0 2px #0d6efd33;
+    filter: brightness(1.05);
+}
+.recipients-list {
+    line-height: 1.2;
+}
+.recipients-list div {
+    margin-bottom: 2px;
+}
+.recipients-list div:last-child {
+    margin-bottom: 0;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+            html: true,
+            placement: 'top',
+            trigger: 'hover'
+        });
+    });
+});
 </script>
 {% endblock %}

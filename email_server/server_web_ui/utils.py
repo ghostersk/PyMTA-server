@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def get_public_ip() -> str:
     """Get the public IP address of the server."""
     try:
-        response1 = requests.get('https://ifconfig.me/ip', timeout=3, verify=False)
+        response1 = requests.get('http://ifconfig.me/ip', timeout=3, verify=False)
 
         ip = response1.text.strip()
         if ip and ip != 'unknown':
@@ -24,7 +24,7 @@ def get_public_ip() -> str:
     except Exception:
         try:
             # Fallback method
-            response = requests.get('https://httpbin.org/ip', timeout=3, verify=False)
+            response = requests.get('http://httpbin.org/ip', timeout=3, verify=False)
             ip = response.json()['origin'].split(',')[0].strip()
             if ip and ip != 'unknown':
                 return ip

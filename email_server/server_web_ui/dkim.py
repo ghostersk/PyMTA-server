@@ -9,12 +9,12 @@ This module provides DKIM key management functionality including:
 - DKIM DNS verification
 """
 
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from datetime import datetime
 import re
 from email_server.models import Session, Domain, DKIMKey
 from email_server.dkim_manager import DKIMManager
-from email_server.tool_box import get_logger
+from email_server.tool_box import get_logger, get_current_time
 from .utils import get_public_ip, check_dns_record, generate_spf_record
 from .routes import email_bp
 
@@ -107,7 +107,7 @@ def create_dkim():
         active_keys = session.query(DKIMKey).filter_by(domain_id=domain.id, is_active=True).all()
         for key in active_keys:
             key.is_active = False
-            key.replaced_at = datetime.now()
+            key.replaced_at = get_current_time()
         # Create new DKIM key
         dkim_manager = DKIMManager()
         created = dkim_manager.generate_dkim_keypair(domain_name, selector=selector, force_new_key=True)
@@ -146,7 +146,7 @@ def regenerate_dkim(domain_id: int):
         # Mark existing keys as replaced
         for key in existing_keys:
             key.is_active = False
-            key.replaced_at = datetime.now()  # Mark when this key was replaced
+            key.replaced_at = get_current_time()  # Mark when this key was replaced
         
         # Generate new DKIM key preserving the existing selector
         dkim_manager = DKIMManager()
@@ -331,7 +331,7 @@ def toggle_dkim(dkim_id: int):
             ).all()
             for key in other_active_keys:
                 key.is_active = False
-                key.replaced_at = datetime.now()
+                key.replaced_at = get_current_time()
         
         dkim_key.is_active = not old_status
         if dkim_key.is_active:
@@ -432,11 +432,22 @@ def check_spf_dns():
                 spf_record = record
                 break
     
+    spf_valid_for_server = False
+    spf_check_message = ''
+    public_ip = get_public_ip()
+    ip_mechanism = f'ip4:{public_ip}'
     if spf_record:
         result['spf_record'] = spf_record
+        if ip_mechanism in spf_record:
+            spf_valid_for_server = True
+            spf_check_message = f'SPF is valid for this server (contains {ip_mechanism})'
+        else:
+            spf_check_message = f'SPF is missing this server\'s IP ({ip_mechanism})'
         result['message'] = 'SPF record found'
     else:
         result['success'] = False
         result['message'] = 'No SPF record found'
-    
+    result['spf_valid_for_server'] = spf_valid_for_server
+    result['spf_check_message'] = spf_check_message
+    result['public_ip'] = public_ip
     return jsonify(result)

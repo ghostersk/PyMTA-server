@@ -331,6 +331,30 @@
 
 {% block extra_js %}
 <script>
+    // Clipboard copy function for all copy buttons
+    function copyToClipboard(text) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                showToast('Copied to clipboard!', 'success');
+            }, function(err) {
+                showToast('Failed to copy: ' + err, 'danger');
+            });
+        } else {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Copied to clipboard!', 'success');
+            } catch (err) {
+                showToast('Failed to copy: ' + err, 'danger');
+            }
+            document.body.removeChild(textarea);
+        }
+    }
+    
     // Show toast notification
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toastContainer');
@@ -433,6 +457,14 @@
             // Update SPF status
             if (spfResult.success) {
                 spfStatus.innerHTML = '<span class="status-indicator status-success"></span><small class="text-success">✓ Found</small>';
+                // Show additional SPF check message if available
+                if (typeof spfResult.spf_valid_for_server !== 'undefined') {
+                    if (spfResult.spf_valid_for_server) {
+                        spfStatus.innerHTML += '<br><span class="text-success"><i class="bi bi-check-circle me-1"></i> SPF is valid for this server</span>';
+                    } else {
+                        spfStatus.innerHTML += '<br><span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i> SPF missing server IP</span>';
+                    }
+                }
             } else {
                 spfStatus.innerHTML = '<span class="status-indicator status-danger"></span><small class="text-danger">✗ Not found</small>';
             }

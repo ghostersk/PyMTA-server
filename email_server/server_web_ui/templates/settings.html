@@ -97,10 +97,22 @@
                                     <input type="text" 
                                            class="form-control" 
                                            name="Server.bind_ip" 
-                                           value="{{ settings['Server']['bind_ip'] }}"
-                                           pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$">
+                                           value="{{ settings['Server']['bind_ip'] }}">
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Server Timezone</label>
+                                    <div class="setting-description">Timezone for server operations and logging</div>
+                                    <select class="form-select" name="Server.time_zone">
+                                        {% for tz in timezones %}
+                                        <option value="{{ tz }}" {% if tz == settings['Server']['time_zone'] %}selected{% endif %}>{{ tz }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Hostname</label>
@@ -111,8 +123,6 @@
                                            value="{{ settings['Server']['hostname'] }}">
                                 </div>
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">HELO Hostname</label>
@@ -123,6 +133,8 @@
                                            value="{{ settings['Server']['helo_hostname'] }}">
                                 </div>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Server Banner</label>
@@ -346,6 +358,40 @@
                                     <i class="bi bi-cloud-download me-1"></i>
                                     Get Public IP
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attachments Settings -->
+        <div class="card mb-4">
+            <div class="card-header" data-bs-toggle="collapse" data-bs-target="#attachmentsSettings" aria-expanded="true">
+                <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-paperclip me-2"></i>Attachments Configuration</span>
+                    <i class="bi bi-chevron-down"></i>
+                </h5>
+            </div>
+            <div id="attachmentsSettings" class="collapse show">
+                <div class="card-body">
+                    <div class="setting-section">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Attachments Storage Path</label>
+                                    <div class="setting-description">Path where email attachments will be stored (relative to SMTP server root)</div>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Attachments.attachments_path" 
+                                           value="{{ settings['Attachments']['attachments_path'] }}"
+                                           placeholder="email_server/server_data/attachments">
+                                </div>                        <div class="setting-description text-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Make sure the path exists and is writable by the server process
+                        </div>
+                        <div id="attachments-path-feedback" class="mt-2"></div>
+                                <div id="attachments-path-feedback" class="mt-2"></div>
                             </div>
                         </div>
                     </div>
@@ -600,6 +646,61 @@
         console.log('Submitting settings with data:');
         for (let [key, value] of formData.entries()) {
             console.log(`${key}: ${value}`);
+        }
+    });
+
+    // Populate timezone select options
+    document.addEventListener('DOMContentLoaded', function() {
+        const timeZoneSelect = document.getElementById('timeZoneSelect');
+        fetch('/api/timezones')
+            .then(response => response.json())
+            .then(data => {
+                data.timezones.forEach(tz => {
+                    const option = document.createElement('option');
+                    option.value = tz;
+                    option.textContent = tz;
+                    timeZoneSelect.appendChild(option);
+                });
+            })
+            .catch(err => console.error('Failed to load timezones:', err));
+    });
+
+    function validateAttachmentsPath() {
+        const path = document.querySelector('input[name="Attachments.attachments_path"]').value;
+        const feedback = document.getElementById('attachments-path-feedback');
+        if (!feedback) return;
+
+        fetch('{{ url_for("email.test_attachments_path") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token_value|default("") }}'
+            },
+            body: `path=${encodeURIComponent(path)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            feedback.innerHTML = data.message;
+            feedback.className = data.success ? 'text-success mt-2' : 'text-danger mt-2';
+            if (data.success) {
+                feedback.innerHTML += `<br><small class="text-muted">Absolute path: ${data.absolute_path}</small>`;
+            }
+        })
+        .catch(error => {
+            feedback.innerHTML = `Error validating path: ${error}`;
+            feedback.className = 'text-danger mt-2';
+        });
+    }
+
+    // Add event listener to attachments path input
+    document.querySelector('input[name="Attachments.attachments_path"]')?.addEventListener('change', validateAttachmentsPath);
+
+    document.getElementById('settingsForm')?.addEventListener('submit', function(e) {
+        const attachmentsPath = document.querySelector('input[name="Attachments.attachments_path"]');
+        if (!attachmentsPath.value.trim()) {
+            e.preventDefault();
+            alert('Please specify a valid attachments storage path');
+            attachmentsPath.focus();
         }
     });
 </script>

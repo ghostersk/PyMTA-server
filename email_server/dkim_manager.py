@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from datetime import datetime
 from email_server.models import Session, Domain, DKIMKey, CustomHeader
 from email_server.settings_loader import load_settings
-from email_server.tool_box import get_logger
+from email_server.tool_box import get_logger, get_current_time
 import random
 import string
 
@@ -55,7 +55,7 @@ class DKIMManager:
             existing_active_keys = session.query(DKIMKey).filter_by(domain_id=domain.id, is_active=True).all()
             for existing_key in existing_active_keys:
                 existing_key.is_active = False
-                existing_key.replaced_at = datetime.now()
+                existing_key.replaced_at = get_current_time()
                 logger.debug(f"Marked DKIM key as replaced for domain {domain_name} selector {existing_key.selector}")
             
             # Check if we're reusing an existing selector - if so, reactivate instead of creating new
@@ -75,7 +75,7 @@ class DKIMManager:
                     ).all()
                     for key in other_active_keys:
                         key.is_active = False
-                        key.replaced_at = datetime.now()
+                        key.replaced_at = get_current_time()
                         logger.debug(f"Deactivated other active DKIM key for domain {domain_name} selector {key.selector}")
                     # Reactivate existing key with same selector, clear replaced_at timestamp
                     existing_key_with_selector.is_active = True
@@ -114,7 +114,7 @@ class DKIMManager:
                 selector=use_selector,
                 private_key=private_pem,
                 public_key=public_pem,
-                created_at=datetime.now(),
+                created_at=get_current_time(),
                 is_active=True
             )
             session.add(dkim_key)

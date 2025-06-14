@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}View Full Message - Email Log{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Full Message Content</h2>
+    <div class="mb-3">
+        <strong>From:</strong> {{ log.mail_from }}<br>
+        <strong>To:</strong> {{ log.to_address }}<br>
+        <strong>CC:</strong> {{ log.cc_addresses or 'None' }}<br>
+        <strong>BCC:</strong> {{ log.bcc_addresses or 'None' }}<br>
+        <strong>Subject:</strong> {{ log.subject or 'N/A' }}<br>
+        <strong>Date:</strong> {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}<br>
+    </div>
+
+    {% if log.attachments %}
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Attachments:</strong>
+        </div>
+        <div class="card-body">
+            <ul class="list-group">
+            {% for attachment in log.attachments %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-paperclip"></i> {{ attachment.filename }}
+                        <small class="text-muted">({{ attachment.size|filesizeformat }})</small>
+                    </div>
+                    <div class="btn-group" role="group">
+                        {% set content_type = attachment.content_type.lower() if attachment.content_type else 'application/octet-stream' %}
+                        {% set extension = attachment.filename.split('.')[-1].lower() if '.' in attachment.filename else '' %}
+                        
+                        {% set is_image = content_type.startswith('image/') or extension in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'] %}
+                        {% set is_text = content_type.startswith('text/') or extension in ['txt', 'log', 'json', 'xml', 'csv', 'md'] %}
+                        {% set is_pdf = content_type == 'application/pdf' or extension == 'pdf' %}
+                        {% set is_html = content_type in ['text/html', 'application/xhtml+xml'] or extension in ['html', 'htm'] %}
+                        
+                        {% if is_image or is_text or is_pdf or is_html %}
+                            <a href="{{ url_for('email.download_attachment', attachment_id=attachment.id) }}" 
+                               class="btn btn-sm btn-outline-primary" 
+                               target="_blank"
+                               data-bs-toggle="tooltip"
+                               title="Open in new tab">
+                               <i class="fas fa-external-link-alt"></i>
+                               {% if is_image %}<i class="fas fa-image"></i> View Image
+                               {% elif is_pdf %}<i class="fas fa-file-pdf"></i> View PDF
+                               {% elif extension == 'csv' %}<i class="fas fa-table"></i> View CSV
+                               {% elif is_text %}<i class="fas fa-file-alt"></i> View Text
+                               {% elif is_html %}<i class="fas fa-file-code"></i> View HTML
+                               {% else %}View in Browser
+                               {% endif %}
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('email.download_attachment', attachment_id=attachment.id, download='true') }}" 
+                           class="btn btn-sm btn-outline-secondary"
+                           title="Download file">
+                           <i class="fas fa-download"></i> Download
+                        </a>
+                        <form method="POST" 
+                              action="{{ url_for('email.delete_attachment', attachment_id=attachment.id) }}" 
+                              style="display: inline;" 
+                              onsubmit="return confirm('Are you sure you want to delete this attachment?');">
+                            <button type="submit" 
+                                    class="btn btn-sm btn-outline-danger"
+                                    title="Delete attachment">
+                                    <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <strong>Message Content:</strong>
+        </div>
+        <div class="card-body">
+            <pre style="white-space: pre-wrap; word-break: break-all;">{{ log.message_body }}</pre>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <strong>Message Headers:</strong>
+        </div>
+        <div class="card-body">
+            <pre style="white-space: pre-wrap;">{{ log.email_headers }}</pre>
+        </div>
+    </div>
+
+    <a href="{{ url_for('email.logs', type='emails') }}" class="btn btn-secondary mt-3">Back to Logs</a>
+</div>
+{% endblock %}

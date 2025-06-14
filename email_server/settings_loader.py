@@ -14,8 +14,8 @@ DEFAULTS = {
         '; Server configuration for SMTP ports and hostname': None,
         '; Plain SMTP port for internal/whitelisted IPs': None,
         'SMTP_PORT': '4025',
-        '; STARTTLS SMTP port for authenticated users': None,
-        'SMTP_TLS_PORT': '40587',
+        '; TLS SMTP port for authenticated users': None,
+        'SMTP_TLS_PORT': '40465',
         '; Server hostname for HELO/EHLO identification': None,
         'HOSTNAME': 'mail.example.com',
         '; Override HELO hostname': None,
@@ -24,6 +24,8 @@ DEFAULTS = {
         'BIND_IP': '0.0.0.0',
         '; Custom server banner (to make it empty use "" must be double quotes)': None,
         'server_banner': "",
+        '; Time zone for the server': None,
+        'TIME_ZONE': 'Europe/London',
     },
     'Database': {
         '; Database configuration': None,
@@ -38,7 +40,7 @@ DEFAULTS = {
     },
     'Relay': {
         '; Timeout in seconds for external SMTP connections': None,
-        'RELAY_TIMEOUT': '10',
+        'RELAY_TIMEOUT': '30',
     },
     'TLS': {
         '; TLS/SSL certificate configuration': None,
